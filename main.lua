@@ -3,10 +3,11 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Global variables
+-- Global settings
 _G.G_LIGHT_SETTINGS = _G.G_LIGHT_SETTINGS or {
     ESP_Roles = false,
     CustomSpeedEnabled = false,
@@ -59,6 +60,36 @@ elseif syn and syn.protect_gui then
 else
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
+
+-- ANIMATED WELCOME INTRO OVERLAY
+local IntroFrame = Instance.new("Frame")
+IntroFrame.Name = "IntroFrame"
+IntroFrame.Size = UDim2.new(1, 0, 1, 0)
+IntroFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+IntroFrame.BackgroundTransparency = 0
+IntroFrame.ZIndex = 100
+IntroFrame.Parent = ScreenGui
+
+local IntroText = Instance.new("TextLabel")
+IntroText.Size = UDim2.new(1, 0, 1, 0)
+IntroText.BackgroundTransparency = 1
+IntroText.Text = "WELCOME TO G LIGHT HUB v5.0"
+IntroText.TextColor3 = Color3.fromRGB(0, 170, 255)
+IntroText.TextSize = 28
+IntroText.Font = Enum.Font.SourceSansBold
+IntroText.TextTransparency = 1
+IntroText.ZIndex = 101
+IntroText.Parent = IntroFrame
+
+-- Intro Animation Thread
+task.spawn(function()
+    TweenService:Create(IntroText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+    task.wait(1.8)
+    TweenService:Create(IntroText, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+    TweenService:Create(IntroFrame, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+    task.wait(1)
+    IntroFrame:Destroy()
+end)
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
@@ -295,7 +326,7 @@ end)
 createToggle(Pages["Movement"], "Inf Jump", "InfJump")
 createToggle(Pages["Movement"], "Dash (Q key)", "DashEnabled")
 
--- NEW: FLY & FLY SPEED SLIDER
+-- FLY & FLY SPEED SLIDER
 createToggle(Pages["Movement"], "Fly", "FlyEnabled")
 createSlider(Pages["Movement"], "Fly Speed", 1, 5, 1, function(v)
     _G.G_LIGHT_SETTINGS.FlySpeed = v
@@ -397,7 +428,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Dash Logic
+-- Dash & UI Toggle
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.RightControl then
