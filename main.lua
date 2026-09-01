@@ -1,3 +1,15 @@
+--================================================================================--
+--                                                                                --
+--      ██████╗ ██╗     ██╗██╗██╗  ██╗████████╗    ██╗  ██╗██╗   ██╗██████╗       --
+--     ██╔════╝ ██║     ██║██║██║  ██║╚══██╔══╝    ██║  ██║██║   ██║██╔══██╗      --
+--     ██║  ███╗██║     ██║██║███████║   ██║       ███████║██║   ██║██████╔╝      --
+--     ██║   ██║██║     ██║██║██╔══██║   ██║       ██╔══██║██║   ██║██╔══██╗      --
+--     ╚██████╔╝███████╗██║██║██║  ██║   ██║       ██║  ██║╚██████╔╝██████╔╝      --
+--      ╚═════╝ ╚══════╝╚═╝╚═╝╚═╝  ╚═╝   ╚═╝       ╚═╝  ╚═╝ ╚═════╝ ╚═════╝       --
+--                                                                                --
+--            VERSION 8.5 - COSMIC GUI & SHERIFF AUTO-AIM EDITION                 --
+--================================================================================--
+
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,99 +20,60 @@ local CoreGui = game:GetService("CoreGui")
 local VirtualUser = game:GetService("VirtualUser")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
--- Global Settings
+------------------------------------------------------------------------------------
+-- GLOBAL CONFIGURATION ENGINE
+------------------------------------------------------------------------------------
 _G.G_LIGHT_SETTINGS = _G.G_LIGHT_SETTINGS or {
-    ESP_Roles = false,
-    AutoCoinFarm = false,
-    CoinFarmSpeed = 25,
+    ESP_Roles = true,
+    ESP_Coins = true,
+    AutoCoinFarm = true,
+    SafeFarmDelay = 0.25,
     CustomSpeedEnabled = false,
-    SpeedValue = 16,
-    InfJump = false,
-    DashEnabled = false,
+    SpeedValue = 24,
+    InfJump = true,
     NoclipEnabled = false,
     KillAura = false,
-    DangerRadar = false,
-    CurrentTheme = "Cosmic",
-    FlyEnabled = false,
-    FlySpeed = 1,
+    SheriffAutoAim = true, -- Новая функция авто-аима для Шерифа
+    AimSmoothness = 0.2,   -- Плавность наводки (0.1 - мгновенно, 0.5 - очень плавно)
     AntiKick = true,
-    AntiAFK = true
+    AntiAFK = true,
+    CoinHighlightsColor = Color3.fromRGB(255, 215, 0),
+    MurdererColor = Color3.fromRGB(255, 45, 45),
+    SheriffColor = Color3.fromRGB(0, 160, 255),
+    InnocentColor = Color3.fromRGB(40, 230, 80)
 }
 
----------------------------------------------------------
--- ANTI-KICK & ANTI-BAN PROTECTION SYSTEM
----------------------------------------------------------
-task.spawn(function()
-    if hookmetamethod then
-        local oldNamecall
-        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if _G.G_LIGHT_SETTINGS.AntiKick and (method == "Kick" or method == "kick") and self == LocalPlayer then
-                warn("[G LIGHT HUB Protection]: Blocked server/script kick attempt!")
-                return nil
-            end
-            return oldNamecall(self, ...)
-        end)
-    end
-
-    if LocalPlayer.Kick then
-        local oldKick = LocalPlayer.Kick
-        LocalPlayer.Kick = function(self, ...)
-            if _G.G_LIGHT_SETTINGS.AntiKick then
-                warn("[G LIGHT HUB Protection]: Blocked direct kick call!")
-                return nil
-            end
-            return oldKick(self, ...)
+------------------------------------------------------------------------------------
+-- SECURITY & BYPASS ENGINE
+------------------------------------------------------------------------------------
+if hookmetamethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if _G.G_LIGHT_SETTINGS.AntiKick and (method == "Kick" or method == "kick") and self == LocalPlayer then
+            return nil
         end
-    end
-
-    LocalPlayer.Idled:Connect(function()
-        if _G.G_LIGHT_SETTINGS.AntiAFK then
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end
+        return oldNamecall(self, ...)
     end)
+end
+
+LocalPlayer.Idled:Connect(function()
+    if _G.G_LIGHT_SETTINGS.AntiAFK then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new(0, 0))
+    end
 end)
 
-local Themes = {
-    Cosmic = {
-        Background = Color3.fromRGB(15, 17, 28),
-        Header = Color3.fromRGB(24, 28, 48),
-        Sidebar = Color3.fromRGB(18, 20, 34),
-        Card = Color3.fromRGB(28, 32, 54),
-        Accent = Color3.fromRGB(0, 190, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        SubText = Color3.fromRGB(160, 170, 200),
-        CornerRadius = UDim.new(0, 12)
-    },
-    BlackHole = {
-        Background = Color3.fromRGB(12, 10, 18),
-        Header = Color3.fromRGB(24, 18, 36),
-        Sidebar = Color3.fromRGB(16, 12, 24),
-        Card = Color3.fromRGB(28, 20, 42),
-        Accent = Color3.fromRGB(170, 0, 255),
-        Text = Color3.fromRGB(250, 240, 255),
-        SubText = Color3.fromRGB(170, 140, 190),
-        CornerRadius = UDim.new(0, 12)
-    },
-    Cyber = {
-        Background = Color3.fromRGB(15, 23, 20),
-        Header = Color3.fromRGB(22, 38, 32),
-        Sidebar = Color3.fromRGB(18, 28, 24),
-        Card = Color3.fromRGB(25, 45, 38),
-        Accent = Color3.fromRGB(0, 255, 170),
-        Text = Color3.fromRGB(240, 255, 250),
-        SubText = Color3.fromRGB(140, 190, 175),
-        CornerRadius = UDim.new(0, 12)
-    }
-}
-
--- ScreenGui Setup
+------------------------------------------------------------------------------------
+-- BASE GUI SETUP
+------------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GLightHubUI"
+ScreenGui.Name = "GLightHub_Monolith_v85"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 99999
 
 if gethui then
     ScreenGui.Parent = gethui()
@@ -111,295 +84,182 @@ else
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
----------------------------------------------------------
--- ULTRA HIGH-QUALITY INTRO ANIMATION
----------------------------------------------------------
-local IntroFrame = Instance.new("Frame")
-IntroFrame.Name = "IntroFrame"
-IntroFrame.Size = UDim2.new(1, 0, 1, 0)
-IntroFrame.Position = UDim2.new(0, 0, 0, 0)
-IntroFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
-IntroFrame.BackgroundTransparency = 0
-IntroFrame.ZIndex = 100
-IntroFrame.ClipsDescendants = true
-IntroFrame.Parent = ScreenGui
+------------------------------------------------------------------------------------
+-- INTRO SYSTEM (STARFALL)
+------------------------------------------------------------------------------------
+local IntroCanvas = Instance.new("Frame")
+IntroCanvas.Size = UDim2.new(1, 0, 1, 0)
+IntroCanvas.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
+IntroCanvas.BorderSizePixel = 0
+IntroCanvas.ZIndex = 500
+IntroCanvas.Parent = ScreenGui
 
--- Ambient Background Particle Layer (Twinkling Stars)
-local bgStarsActive = true
-task.spawn(function()
-    for i = 1, 120 do
-        local star = Instance.new("Frame")
-        local sz = math.random(1, 3)
-        star.Size = UDim2.new(0, sz, 0, sz)
-        star.Position = UDim2.new(math.random(), 0, math.random(), 0)
-        star.BackgroundColor3 = Color3.fromRGB(220, 240, 255)
-        star.BackgroundTransparency = math.random(4, 9) / 10
-        star.BorderSizePixel = 0
-        star.ZIndex = 101
-        star.Parent = IntroFrame
+local StarsIntroContainer = Instance.new("Frame")
+StarsIntroContainer.Size = UDim2.new(1, 0, 1, 0)
+StarsIntroContainer.BackgroundTransparency = 1
+StarsIntroContainer.ZIndex = 501
+StarsIntroContainer.Parent = IntroCanvas
 
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(1, 0)
-        corner.Parent = star
-
-        task.spawn(function()
-            while bgStarsActive and star.Parent do
-                local targetAlpha = math.random(2, 9) / 10
-                local dur = math.random(10, 25) / 10
-                TweenService:Create(star, TweenInfo.new(dur, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                    BackgroundTransparency = targetAlpha
-                }):Play()
-                task.wait(dur)
-            end
-        end)
-    end
-end)
-
--- Intensive Falling Shooting Stars Generator
-local starSpawning = true
-task.spawn(function()
-    local starColors = {
-        Color3.fromRGB(0, 200, 255),
-        Color3.fromRGB(180, 100, 255),
-        Color3.fromRGB(0, 255, 180),
-        Color3.fromRGB(255, 255, 255)
-    }
-
-    while starSpawning do
-        task.wait(0.02)
-        local star = Instance.new("Frame")
-        local width = math.random(40, 120)
-        star.Size = UDim2.new(0, width, 0, 2)
-        star.Position = UDim2.new(math.random() * 1.3 - 0.15, 0, -0.15, 0)
-        star.Rotation = 35
-        star.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        star.BorderSizePixel = 0
-        star.ZIndex = 102
-        star.Parent = IntroFrame
-
-        local mainColor = starColors[math.random(1, #starColors)]
-
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, mainColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
-        }
-        gradient.Transparency = NumberSequence.new{
-            NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(0.6, 0.15),
-            NumberSequenceKeypoint.new(1, 0)
-        }
-        gradient.Parent = star
-
-        local fallDuration = math.random(8, 18) / 10
-        local endPos = UDim2.new(star.Position.X.Scale - 0.5, 0, 1.3, 0)
-
-        TweenService:Create(star, TweenInfo.new(fallDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Position = endPos
-        }):Play()
-
-        task.delay(fallDuration, function()
-            star:Destroy()
-        end)
-    end
-end)
-
--- Central Text + Neon Glow Effect Frame
-local TextContainer = Instance.new("Frame")
-TextContainer.Size = UDim2.new(1, 0, 0, 100)
-TextContainer.Position = UDim2.new(0, 0, 0.5, -50)
-TextContainer.BackgroundTransparency = 1
-TextContainer.ZIndex = 105
-TextContainer.Parent = IntroFrame
-
--- Neon Glow Behind Text
-local TextGlow = Instance.new("TextLabel")
-TextGlow.Size = UDim2.new(1, 0, 1, 0)
-TextGlow.BackgroundTransparency = 1
-TextGlow.Text = "G_light present..."
-TextGlow.TextColor3 = Color3.fromRGB(0, 190, 255)
-TextGlow.TextSize = 32
-TextGlow.Font = Enum.Font.GothamBold
-TextGlow.TextTransparency = 0.7
-TextGlow.ZIndex = 104
-TextGlow.Parent = TextContainer
-
-local IntroText = Instance.new("TextLabel")
-IntroText.Size = UDim2.new(1, 0, 1, 0)
-IntroText.BackgroundTransparency = 1
-IntroText.Text = "G_light present..."
-IntroText.TextColor3 = Color3.fromRGB(255, 255, 255)
-IntroText.TextSize = 28
-IntroText.Font = Enum.Font.GothamBold
-IntroText.TextTransparency = 1
-IntroText.ZIndex = 105
-IntroText.Parent = TextContainer
-
--- Light Flash Pulse Overlay
-local FlashOverlay = Instance.new("Frame")
-FlashOverlay.Size = UDim2.new(1, 0, 1, 0)
-FlashOverlay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-FlashOverlay.BackgroundTransparency = 1
-FlashOverlay.ZIndex = 110
-FlashOverlay.Parent = ScreenGui
-
--- Pulse Loop for Dynamic Breathing Effect
-local pulsing = true
-task.spawn(function()
-    while pulsing do
-        TweenService:Create(TextContainer, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-            Size = UDim2.new(1, 0, 0, 110)
-        }):Play()
-        task.wait(1.2)
-        if not pulsing then break end
-        TweenService:Create(TextContainer, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-            Size = UDim2.new(1, 0, 0, 95)
-        }):Play()
-        task.wait(1.2)
-    end
-end)
-
--- Intro Sequences Timeline with Sound & Visual Tweaks
-task.spawn(function()
-    TweenService:Create(IntroText, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-    TweenService:Create(TextGlow, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0.6}):Play()
-    task.wait(5)
-
-    TweenService:Create(IntroText, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
-    TweenService:Create(TextGlow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
-    task.wait(0.4)
-
-    IntroText.Text = "A new best hub for mm2"
-    TextGlow.Text = "A new best hub for mm2"
-    TextGlow.TextColor3 = Color3.fromRGB(180, 100, 255)
-    IntroText.TextColor3 = Color3.fromRGB(240, 220, 255)
-
-    TweenService:Create(IntroText, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-    TweenService:Create(TextGlow, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0.5}):Play()
-    task.wait(5)
-
-    TweenService:Create(IntroText, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
-    TweenService:Create(TextGlow, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
-    task.wait(0.3)
-
-    TweenService:Create(FlashOverlay, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.75}):Play()
-    task.delay(0.15, function()
-        TweenService:Create(FlashOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
-    end)
-
-    IntroText.Text = "G_LIGHT HUB!!!"
-    TextGlow.Text = "G_LIGHT HUB!!!"
-    IntroText.TextSize = 36
-    TextGlow.TextSize = 42
-    TextGlow.TextColor3 = Color3.fromRGB(0, 255, 170)
-    IntroText.TextColor3 = Color3.fromRGB(255, 255, 255)
-
-    TweenService:Create(IntroText, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-    TweenService:Create(TextGlow, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextTransparency = 0.3}):Play()
-    task.wait(1)
-
-    pulsing = false
-    starSpawning = false
-    bgStarsActive = false
-
-    TweenService:Create(TextContainer, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-        Size = UDim2.new(1.3, 0, 0, 140)
-    }):Play()
-    TweenService:Create(IntroText, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
-    TweenService:Create(TextGlow, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+local introStars = {}
+for i = 1, 60 do
+    local star = Instance.new("Frame")
+    star.Size = UDim2.new(0, math.random(2, 4), 0, math.random(10, 20))
+    star.Position = UDim2.new(math.random(), 0, math.random() - 1, 0)
+    star.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    star.BorderSizePixel = 0
+    star.ZIndex = 502
+    star.Parent = StarsIntroContainer
     
-    TweenService:Create(IntroFrame, TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-        BackgroundTransparency = 1
-    }):Play()
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = star
+    
+    table.insert(introStars, {Obj = star, Speed = math.random(500, 900) / 1000})
+end
 
-    task.wait(0.7)
-    IntroFrame:Destroy()
-    FlashOverlay:Destroy()
+local starAnimConnection
+starAnimConnection = RunService.RenderStepped:Connect(function(dt)
+    for _, s in ipairs(introStars) do
+        local newY = s.Obj.Position.Y.Scale + (s.Speed * dt)
+        if newY > 1.1 then newY = -0.1 end
+        s.Obj.Position = UDim2.new(s.Obj.Position.X.Scale, 0, newY, 0)
+    end
 end)
 
----------------------------------------------------------
--- MAIN GUI
----------------------------------------------------------
+local SubTitle = Instance.new("TextLabel")
+SubTitle.Size = UDim2.new(1, 0, 0, 30)
+SubTitle.Position = UDim2.new(0, 0, 0.43, -40)
+SubTitle.BackgroundTransparency = 1
+SubTitle.Text = "G_light Presents..."
+SubTitle.TextColor3 = Color3.fromRGB(150, 180, 240)
+SubTitle.TextTransparency = 1
+SubTitle.TextSize = 22
+SubTitle.Font = Enum.Font.GothamMedium
+SubTitle.ZIndex = 505
+SubTitle.Parent = IntroCanvas
+
+local MainTitle = Instance.new("TextLabel")
+MainTitle.Size = UDim2.new(1, 0, 0, 70)
+MainTitle.Position = UDim2.new(0, 0, 0.43, 10)
+MainTitle.BackgroundTransparency = 1
+MainTitle.Text = "✨ G LIGHT HUB ✨"
+MainTitle.TextColor3 = Color3.fromRGB(0, 210, 255)
+MainTitle.TextTransparency = 1
+MainTitle.TextSize = 48
+MainTitle.Font = Enum.Font.GothamBold
+MainTitle.ZIndex = 505
+MainTitle.Parent = IntroCanvas
+
+task.spawn(function()
+    local tIn = TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local tOut = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    
+    TweenService:Create(SubTitle, tIn, {TextTransparency = 0}):Play()
+    task.wait(0.9)
+    TweenService:Create(MainTitle, tIn, {TextTransparency = 0}):Play()
+    task.wait(1.4)
+    
+    TweenService:Create(SubTitle, tOut, {TextTransparency = 1}):Play()
+    TweenService:Create(MainTitle, tOut, {TextTransparency = 1}):Play()
+    TweenService:Create(IntroCanvas, tOut, {BackgroundTransparency = 1}):Play()
+    
+    task.wait(0.5)
+    if starAnimConnection then starAnimConnection:Disconnect() end
+    IntroCanvas:Destroy()
+end)
+
+------------------------------------------------------------------------------------
+-- MAIN HUB & INSIDE-GUI STAR SYSTEM
+------------------------------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 560, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -280, 0.5, -180)
-MainFrame.BackgroundColor3 = Themes.Cosmic.Background
+MainFrame.Size = UDim2.new(0, 640, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -320, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
 MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
+MainFrame.ZIndex = 10
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = Themes.Cosmic.CornerRadius
+MainCorner.CornerRadius = UDim.new(0, 14)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 1.5
-MainStroke.Color = Color3.fromRGB(45, 52, 80)
-MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MainStroke.Color = Color3.fromRGB(0, 180, 255)
+MainStroke.Transparency = 0.3
 MainStroke.Parent = MainFrame
 
--- STARFIELD BACKGROUND FOR MAIN GUI
-local StarsContainer = Instance.new("Frame")
-StarsContainer.Name = "StarsContainer"
-StarsContainer.Size = UDim2.new(1, 0, 1, 0)
-StarsContainer.BackgroundTransparency = 1
-StarsContainer.ZIndex = 1
-StarsContainer.Parent = MainFrame
+-- ФОНОВЫЕ ЗВЁЗДЫ ВНУТРИ САМОГО GUI
+local GuiStarsContainer = Instance.new("Frame")
+GuiStarsContainer.Name = "GuiStarsContainer"
+GuiStarsContainer.Size = UDim2.new(1, 0, 1, 0)
+GuiStarsContainer.BackgroundTransparency = 1
+GuiStarsContainer.ZIndex = 10
+GuiStarsContainer.Parent = MainFrame
 
-for i = 1, 100 do
+local guiStars = {}
+for i = 1, 35 do
     local star = Instance.new("Frame")
-    local size = math.random(1, 3)
-    star.Size = UDim2.new(0, size, 0, size)
+    star.Size = UDim2.new(0, math.random(2, 3), 0, math.random(6, 14))
     star.Position = UDim2.new(math.random(), 0, math.random(), 0)
-    star.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    star.BackgroundTransparency = math.random(30, 85) / 100
+    star.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    star.BackgroundTransparency = math.random(3, 7) / 10
     star.BorderSizePixel = 0
-    star.ZIndex = 1
-    star.Parent = StarsContainer
+    star.ZIndex = 10
+    star.Parent = GuiStarsContainer
     
-    local starCorner = Instance.new("UICorner")
-    starCorner.CornerRadius = UDim.new(1, 0)
-    starCorner.Parent = star
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(1, 0)
+    c.Parent = star
+    
+    table.insert(guiStars, {Obj = star, Speed = math.random(15, 45) / 1000})
 end
 
--- Header
+RunService.RenderStepped:Connect(function(dt)
+    for _, s in ipairs(guiStars) do
+        local newY = s.Obj.Position.Y.Scale + (s.Speed * dt)
+        if newY > 1 then newY = -0.05 end
+        s.Obj.Position = UDim2.new(s.Obj.Position.X.Scale, 0, newY, 0)
+    end
+end)
+
 local Header = Instance.new("Frame")
-Header.Name = "Header"
-Header.Size = UDim2.new(1, 0, 0, 48)
-Header.BackgroundColor3 = Themes.Cosmic.Header
+Header.Size = UDim2.new(1, 0, 0, 52)
+Header.BackgroundColor3 = Color3.fromRGB(18, 22, 38)
 Header.BorderSizePixel = 0
-Header.ZIndex = 3
+Header.ZIndex = 12
 Header.Parent = MainFrame
 
 local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = Themes.Cosmic.CornerRadius
+HeaderCorner.CornerRadius = UDim.new(0, 14)
 HeaderCorner.Parent = Header
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 1, 0)
-Title.Position = UDim2.new(0, 16, 0, 0)
+Title.Position = UDim2.new(0, 18, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "✨ G LIGHT HUB  <font color='#8C00FF'>v6.0</font> 🛡️"
+Title.Text = "✨ G LIGHT HUB  <font color='#00C8FF'>v8.5 Cosmic</font> ⭐"
 Title.RichText = true
-Title.TextColor3 = Themes.Cosmic.Text
-Title.TextSize = 17
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.ZIndex = 4
+Title.ZIndex = 13
 Title.Parent = Header
 
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 28, 0, 28)
-CloseBtn.Position = UDim2.new(1, -38, 0.5, -14)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 65)
+CloseBtn.Size = UDim2.new(0, 32, 0, 32)
+CloseBtn.Position = UDim2.new(1, -42, 0.5, -16)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 46, 68)
 CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
+CloseBtn.TextColor3 = Color3.fromRGB(220, 220, 240)
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 13
-CloseBtn.ZIndex = 4
+CloseBtn.TextSize = 14
+CloseBtn.ZIndex = 13
 CloseBtn.Parent = Header
 
 local CloseCorner = Instance.new("UICorner")
@@ -410,14 +270,18 @@ CloseBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
 end)
 
--- Sidebar
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 145, 1, -48)
-Sidebar.Position = UDim2.new(0, 0, 0, 48)
-Sidebar.BackgroundColor3 = Themes.Cosmic.Sidebar
+Sidebar.Size = UDim2.new(0, 160, 1, -52)
+Sidebar.Position = UDim2.new(0, 0, 0, 52)
+Sidebar.BackgroundColor3 = Color3.fromRGB(14, 16, 26)
 Sidebar.BorderSizePixel = 0
-Sidebar.ZIndex = 3
+Sidebar.ZIndex = 12
 Sidebar.Parent = MainFrame
+
+local SidebarList = Instance.new("UIListLayout")
+SidebarList.Parent = Sidebar
+SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarList.Padding = UDim.new(0, 6)
 
 local SidebarPadding = Instance.new("UIPadding")
 SidebarPadding.PaddingTop = UDim.new(0, 10)
@@ -425,17 +289,11 @@ SidebarPadding.PaddingLeft = UDim.new(0, 8)
 SidebarPadding.PaddingRight = UDim.new(0, 8)
 SidebarPadding.Parent = Sidebar
 
-local SidebarList = Instance.new("UIListLayout")
-SidebarList.Parent = Sidebar
-SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
-SidebarList.Padding = UDim.new(0, 6)
-
--- Content Area
 local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, -155, 1, -56)
-Content.Position = UDim2.new(0, 150, 0, 52)
+Content.Size = UDim2.new(1, -172, 1, -60)
+Content.Position = UDim2.new(0, 166, 0, 56)
 Content.BackgroundTransparency = 1
-Content.ZIndex = 3
+Content.ZIndex = 12
 Content.Parent = MainFrame
 
 local Pages = {}
@@ -443,12 +301,14 @@ local TabButtons = {}
 
 local function createPage(name)
     local Page = Instance.new("ScrollingFrame")
-    Page.Size = UDim2.new(1, -6, 1, 0)
+    Page.Size = UDim2.new(1, -4, 1, 0)
     Page.BackgroundTransparency = 1
     Page.Visible = false
-    Page.ScrollBarThickness = 3
-    Page.ScrollBarImageColor3 = Themes.Cosmic.Accent
-    Page.ZIndex = 3
+    Page.ScrollBarThickness = 4
+    Page.ScrollBarImageColor3 = Color3.fromRGB(0, 195, 255)
+    Page.ZIndex = 12
+    Page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     Page.Parent = Content
     
     local List = Instance.new("UIListLayout")
@@ -464,31 +324,21 @@ createPage("MM2")
 createPage("Movement")
 createPage("Combat")
 createPage("Security")
-createPage("Themes")
 createPage("Server")
 
 Pages["MM2"].Visible = true
 
-local tabIcons = {
-    MM2 = "🗡️",
-    Movement = "⚡",
-    Combat = "🎯",
-    Security = "🛡️",
-    Themes = "🎨",
-    Server = "🌐"
-}
-
-local function createTabButton(name)
+local function createTabButton(name, icon)
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, 0, 0, 36)
-    Btn.BackgroundColor3 = (name == "MM2") and Themes.Cosmic.Card or Color3.fromRGB(0, 0, 0)
+    Btn.Size = UDim2.new(1, 0, 0, 38)
+    Btn.BackgroundColor3 = (name == "MM2") and Color3.fromRGB(24, 28, 48) or Color3.fromRGB(0, 0, 0)
     Btn.BackgroundTransparency = (name == "MM2") and 0 or 1
-    Btn.Text = "  " .. (tabIcons[name] or "") .. "  " .. name
-    Btn.TextColor3 = (name == "MM2") and Themes.Cosmic.Accent or Themes.Cosmic.SubText
+    Btn.Text = "  " .. icon .. "  " .. name
+    Btn.TextColor3 = (name == "MM2") and Color3.fromRGB(0, 195, 255) or Color3.fromRGB(160, 175, 210)
     Btn.TextSize = 13
     Btn.Font = Enum.Font.GothamMedium
     Btn.TextXAlignment = Enum.TextXAlignment.Left
-    Btn.ZIndex = 4
+    Btn.ZIndex = 13
     Btn.Parent = Sidebar
     
     local Corner = Instance.new("UICorner")
@@ -498,37 +348,202 @@ local function createTabButton(name)
     TabButtons[name] = Btn
     
     Btn.MouseButton1Click:Connect(function()
-        for pageName, page in pairs(Pages) do
-            page.Visible = (pageName == name)
-        end
-        for btnName, button in pairs(TabButtons) do
-            local isSelected = (btnName == name)
-            local currentTheme = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme]
-            TweenService:Create(button, TweenInfo.new(0.2), {
-                BackgroundTransparency = isSelected and 0 or 1,
-                TextColor3 = isSelected and currentTheme.Accent or currentTheme.SubText
-            }):Play()
-            button.BackgroundColor3 = currentTheme.Card
+        for pName, page in pairs(Pages) do page.Visible = (pName == name) end
+        for bName, button in pairs(TabButtons) do
+            local active = (bName == name)
+            button.BackgroundTransparency = active and 0 or 1
+            button.TextColor3 = active and Color3.fromRGB(0, 195, 255) or Color3.fromRGB(160, 175, 210)
+            button.BackgroundColor3 = Color3.fromRGB(24, 28, 48)
         end
     end)
 end
 
-createTabButton("MM2")
-createTabButton("Movement")
-createTabButton("Combat")
-createTabButton("Security")
-createTabButton("Themes")
-createTabButton("Server")
+createTabButton("MM2", "🗡️")
+createTabButton("Movement", "⚡")
+createTabButton("Combat", "🎯")
+createTabButton("Security", "🛡️")
+createTabButton("Server", "🌐")
 
----------------------------------------------------------
--- UI HELPERS
----------------------------------------------------------
-local function createToggle(page, text, settingKey, callback)
+------------------------------------------------------------------------------------
+-- SHERIFF AUTO-AIM ENGINE (ПЛАВНЫЙ АВТО-АИМ НА УБИЙЦУ)
+------------------------------------------------------------------------------------
+local function getMurderer()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local char = plr.Character
+            if char:FindFirstChild("Knife") or (plr.Backpack and plr.Backpack:FindFirstChild("Knife")) then
+                return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
+            end
+        end
+    end
+    return nil
+end
+
+RunService.RenderStepped:Connect(function()
+    if _G.G_LIGHT_SETTINGS.SheriffAutoAim and LocalPlayer.Character then
+        local char = LocalPlayer.Character
+        local tool = char:FindFirstChildOfClass("Tool")
+        
+        -- Проверяем: держит ли игрок в руках пистолет Шерифа
+        if tool and tool.Name == "Gun" then
+            local targetPart = getMurderer()
+            if targetPart then
+                local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, _G.G_LIGHT_SETTINGS.AimSmoothness)
+            end
+        end
+    end
+end)
+
+------------------------------------------------------------------------------------
+-- MM2 COIN SEARCH ENGINE & WALL ESP
+------------------------------------------------------------------------------------
+local function getMM2Coins()
+    local coins = {}
+    local function scanObj(parent)
+        if not parent then return end
+        for _, v in pairs(parent:GetDescendants()) do
+            if (v:IsA("BasePart") or v:IsA("Model")) and (v.Name == "CoinContainer" or v.Name == "Coin_Server" or v.Name == "Coin" or v.Name == "CoinVisual") then
+                if v:IsA("BasePart") then
+                    table.insert(coins, v)
+                elseif v:IsA("Model") then
+                    for _, child in pairs(v:GetChildren()) do
+                        if child:IsA("BasePart") then table.insert(coins, child) end
+                    end
+                end
+            end
+        end
+    end
+    scanObj(Workspace:FindFirstChild("Normal"))
+    scanObj(Workspace:FindFirstChild("Map"))
+    scanObj(Workspace)
+    return coins
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if _G.G_LIGHT_SETTINGS.ESP_Coins then
+            local currentCoins = getMM2Coins()
+            for _, coin in pairs(currentCoins) do
+                local targetObj = coin:IsA("Model") and (coin.PrimaryPart or coin:FindFirstChildWhichIsA("BasePart")) or coin
+                if targetObj and not targetObj:FindFirstChild("CoinHL_Ultra") then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "CoinHL_Ultra"
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    hl.FillColor = _G.G_LIGHT_SETTINGS.CoinHighlightsColor
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    hl.FillTransparency = 0.15
+                    hl.OutlineTransparency = 0
+                    hl.Adornee = targetObj
+                    hl.Parent = targetObj
+                end
+            end
+        end
+    end
+end)
+
+-- Auto Coin Farm
+local isFarming = false
+task.spawn(function()
+    while true do
+        task.wait(_G.G_LIGHT_SETTINGS.SafeFarmDelay)
+        if _G.G_LIGHT_SETTINGS.AutoCoinFarm and not isFarming then
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            
+            if hrp and hum and hum.Health > 0 then
+                local coins = getMM2Coins()
+                if #coins > 0 then
+                    isFarming = true
+                    for _, coinPart in ipairs(coins) do
+                        if not _G.G_LIGHT_SETTINGS.AutoCoinFarm then break end
+                        local targetPos = coinPart:IsA("BasePart") and coinPart.CFrame or coinPart:GetPivot()
+                        if targetPos then
+                            hrp.CFrame = targetPos + Vector3.new(0, 1.2, 0)
+                            if coinPart:IsA("BasePart") then
+                                firetouchinterest(hrp, coinPart, 0)
+                                task.wait(0.01)
+                                firetouchinterest(hrp, coinPart, 1)
+                            end
+                            task.wait(_G.G_LIGHT_SETTINGS.SafeFarmDelay)
+                        end
+                    end
+                    isFarming = false
+                end
+            end
+        end
+    end
+end)
+
+------------------------------------------------------------------------------------
+-- ESP ROLES ENGINE
+------------------------------------------------------------------------------------
+task.spawn(function()
+    while task.wait(0.8) do
+        if _G.G_LIGHT_SETTINGS.ESP_Roles then
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local char = plr.Character
+                    local hl = char:FindFirstChild("RoleHL") or Instance.new("Highlight")
+                    hl.Name = "RoleHL"
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    
+                    local isMurd = char:FindFirstChild("Knife") or (plr.Backpack and plr.Backpack:FindFirstChild("Knife"))
+                    local isSher = char:FindFirstChild("Gun") or (plr.Backpack and plr.Backpack:FindFirstChild("Gun"))
+                    
+                    if isMurd then
+                        hl.FillColor = _G.G_LIGHT_SETTINGS.MurdererColor
+                    elseif isSher then
+                        hl.FillColor = _G.G_LIGHT_SETTINGS.SheriffColor
+                    else
+                        hl.FillColor = _G.G_LIGHT_SETTINGS.InnocentColor
+                    end
+                    
+                    hl.FillTransparency = 0.25
+                    hl.OutlineTransparency = 0
+                    hl.Adornee = char
+                    hl.Parent = char
+                end
+            end
+        end
+    end
+end)
+
+------------------------------------------------------------------------------------
+-- MOVEMENT ENGINE
+------------------------------------------------------------------------------------
+UserInputService.JumpRequest:Connect(function()
+    if _G.G_LIGHT_SETTINGS.InfJump then
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if _G.G_LIGHT_SETTINGS.NoclipEnabled and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if _G.G_LIGHT_SETTINGS.CustomSpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = _G.G_LIGHT_SETTINGS.SpeedValue
+    end
+end)
+
+------------------------------------------------------------------------------------
+-- UI BUILDER FUNCTIONS
+------------------------------------------------------------------------------------
+local function createToggle(page, text, settingKey)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -6, 0, 42)
-    Frame.BackgroundColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Card
+    Frame.Size = UDim2.new(1, -6, 0, 44)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 26, 44)
     Frame.BorderSizePixel = 0
-    Frame.ZIndex = 4
+    Frame.ZIndex = 13
     Frame.Parent = page
     
     local Corner = Instance.new("UICorner")
@@ -537,21 +552,21 @@ local function createToggle(page, text, settingKey, callback)
     
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.7, 0, 1, 0)
-    Label.Position = UDim2.new(0, 12, 0, 0)
+    Label.Position = UDim2.new(0, 14, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Text
+    Label.Text = "✨ " .. text
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
     Label.TextSize = 13
     Label.Font = Enum.Font.GothamMedium
     Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.ZIndex = 5
+    Label.ZIndex = 14
     Label.Parent = Frame
     
     local Switch = Instance.new("Frame")
-    Switch.Size = UDim2.new(0, 42, 0, 22)
-    Switch.Position = UDim2.new(1, -52, 0.5, -11)
-    Switch.BackgroundColor3 = _G.G_LIGHT_SETTINGS[settingKey] and Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent or Color3.fromRGB(45, 50, 68)
-    Switch.ZIndex = 5
+    Switch.Size = UDim2.new(0, 44, 0, 22)
+    Switch.Position = UDim2.new(1, -54, 0.5, -11)
+    Switch.BackgroundColor3 = _G.G_LIGHT_SETTINGS[settingKey] and Color3.fromRGB(0, 195, 255) or Color3.fromRGB(45, 52, 75)
+    Switch.ZIndex = 14
     Switch.Parent = Frame
     
     local SwitchCorner = Instance.new("UICorner")
@@ -562,7 +577,7 @@ local function createToggle(page, text, settingKey, callback)
     Circle.Size = UDim2.new(0, 16, 0, 16)
     Circle.Position = _G.G_LIGHT_SETTINGS[settingKey] and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
     Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Circle.ZIndex = 6
+    Circle.ZIndex = 15
     Circle.Parent = Switch
     
     local CircleCorner = Instance.new("UICorner")
@@ -573,7 +588,7 @@ local function createToggle(page, text, settingKey, callback)
     ClickBtn.Size = UDim2.new(1, 0, 1, 0)
     ClickBtn.BackgroundTransparency = 1
     ClickBtn.Text = ""
-    ClickBtn.ZIndex = 7
+    ClickBtn.ZIndex = 16
     ClickBtn.Parent = Frame
     
     ClickBtn.MouseButton1Click:Connect(function()
@@ -581,22 +596,21 @@ local function createToggle(page, text, settingKey, callback)
         local enabled = _G.G_LIGHT_SETTINGS[settingKey]
         
         TweenService:Create(Switch, TweenInfo.new(0.2), {
-            BackgroundColor3 = enabled and Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent or Color3.fromRGB(45, 50, 68)
+            BackgroundColor3 = enabled and Color3.fromRGB(0, 195, 255) or Color3.fromRGB(45, 52, 75)
         }):Play()
         TweenService:Create(Circle, TweenInfo.new(0.2), {
             Position = enabled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
         }):Play()
-        
-        if callback then callback(enabled) end
     end)
+    return Frame
 end
 
 local function createSlider(page, text, minVal, maxVal, defaultVal, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -6, 0, 50)
-    Frame.BackgroundColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Card
+    Frame.Size = UDim2.new(1, -6, 0, 52)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 26, 44)
     Frame.BorderSizePixel = 0
-    Frame.ZIndex = 4
+    Frame.ZIndex = 13
     Frame.Parent = page
     
     local Corner = Instance.new("UICorner")
@@ -605,34 +619,34 @@ local function createSlider(page, text, minVal, maxVal, defaultVal, callback)
     
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.6, 0, 0, 22)
-    Label.Position = UDim2.new(0, 12, 0, 4)
+    Label.Position = UDim2.new(0, 14, 0, 4)
     Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Text
+    Label.Text = "⭐ " .. text
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
     Label.TextSize = 13
     Label.Font = Enum.Font.GothamMedium
     Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.ZIndex = 5
+    Label.ZIndex = 14
     Label.Parent = Frame
     
     local ValueLabel = Instance.new("TextLabel")
     ValueLabel.Size = UDim2.new(0.3, 0, 0, 22)
-    ValueLabel.Position = UDim2.new(0.7, -12, 0, 4)
+    ValueLabel.Position = UDim2.new(0.7, -14, 0, 4)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(defaultVal)
-    ValueLabel.TextColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent
+    ValueLabel.TextColor3 = Color3.fromRGB(0, 195, 255)
     ValueLabel.TextSize = 13
     ValueLabel.Font = Enum.Font.GothamBold
     ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    ValueLabel.ZIndex = 5
+    ValueLabel.ZIndex = 14
     ValueLabel.Parent = Frame
     
     local SliderBack = Instance.new("Frame")
-    SliderBack.Size = UDim2.new(1, -24, 0, 6)
-    SliderBack.Position = UDim2.new(0, 12, 0, 32)
-    SliderBack.BackgroundColor3 = Color3.fromRGB(45, 50, 68)
+    SliderBack.Size = UDim2.new(1, -28, 0, 6)
+    SliderBack.Position = UDim2.new(0, 14, 0, 34)
+    SliderBack.BackgroundColor3 = Color3.fromRGB(45, 52, 75)
     SliderBack.BorderSizePixel = 0
-    SliderBack.ZIndex = 5
+    SliderBack.ZIndex = 14
     SliderBack.Parent = Frame
     
     local SliderBackCorner = Instance.new("UICorner")
@@ -641,9 +655,9 @@ local function createSlider(page, text, minVal, maxVal, defaultVal, callback)
     
     local SliderFill = Instance.new("Frame")
     SliderFill.Size = UDim2.new((defaultVal - minVal)/(maxVal - minVal), 0, 1, 0)
-    SliderFill.BackgroundColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent
+    SliderFill.BackgroundColor3 = Color3.fromRGB(0, 195, 255)
     SliderFill.BorderSizePixel = 0
-    SliderFill.ZIndex = 6
+    SliderFill.ZIndex = 15
     SliderFill.Parent = SliderBack
     
     local SliderFillCorner = Instance.new("UICorner")
@@ -660,66 +674,46 @@ local function createSlider(page, text, minVal, maxVal, defaultVal, callback)
     end
     
     SliderBack.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            update(input)
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true update(input) end
     end)
-    
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
-    
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            update(input)
-        end
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then update(input) end
     end)
+    return Frame
 end
 
----------------------------------------------------------
--- POPULATE PAGES
----------------------------------------------------------
-createToggle(Pages["MM2"], "Role & Coin ESP", "ESP_Roles")
-createToggle(Pages["MM2"], "Auto Money Farm (Fly Bypass)", "AutoCoinFarm")
-createSlider(Pages["MM2"], "Coin Farm Speed", 10, 50, 25, function(v)
-    _G.G_LIGHT_SETTINGS.CoinFarmSpeed = v
-end)
+------------------------------------------------------------------------------------
+-- POPULATING TABS & OPTIONS
+------------------------------------------------------------------------------------
+createToggle(Pages["MM2"], "Auto Coin Farm", "AutoCoinFarm")
+createToggle(Pages["MM2"], "Coin Highlight ESP (Wall Penetration)", "ESP_Coins")
+createToggle(Pages["MM2"], "Role Highlight ESP (Murd/Sher/Inn)", "ESP_Roles")
 
-createToggle(Pages["Movement"], "Custom WalkSpeed", "CustomSpeedEnabled", function(v)
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-    end
-end)
-createSlider(Pages["Movement"], "Speed Value", 16, 120, 16, function(v)
+createToggle(Pages["Combat"], "Sheriff Auto-Aim (Lock on Murderer)", "SheriffAutoAim")
+createToggle(Pages["Combat"], "Kill Aura", "KillAura")
+
+createToggle(Pages["Movement"], "Infinite Jump Engine", "InfJump")
+createToggle(Pages["Movement"], "Custom WalkSpeed", "CustomSpeedEnabled")
+createSlider(Pages["Movement"], "Speed Value", 16, 80, 24, function(v)
     _G.G_LIGHT_SETTINGS.SpeedValue = v
 end)
-createToggle(Pages["Movement"], "Safe Inf Jump", "InfJump")
-createToggle(Pages["Movement"], "Dash (Press Q)", "DashEnabled")
 createToggle(Pages["Movement"], "Noclip (Walk Through Walls)", "NoclipEnabled")
 
-createToggle(Pages["Movement"], "Bypass Fly Mode", "FlyEnabled")
-createSlider(Pages["Movement"], "Fly Speed Multiplier", 1, 10, 1, function(v)
-    _G.G_LIGHT_SETTINGS.FlySpeed = v
-end)
-
-createToggle(Pages["Combat"], "Kill Aura", "KillAura")
-createToggle(Pages["Combat"], "Murderer Radar Warning", "DangerRadar")
-
-createToggle(Pages["Security"], "Anti-Kick Bypass", "AntiKick")
-createToggle(Pages["Security"], "Anti-AFK (No Disconnect)", "AntiAFK")
+createToggle(Pages["Security"], "Anti-Kick Protection", "AntiKick")
+createToggle(Pages["Security"], "Anti-AFK System", "AntiAFK")
 
 local RejoinBtn = Instance.new("TextButton")
-RejoinBtn.Size = UDim2.new(1, -6, 0, 42)
-RejoinBtn.BackgroundColor3 = Themes.Cosmic.Card
+RejoinBtn.Size = UDim2.new(1, -6, 0, 44)
+RejoinBtn.BackgroundColor3 = Color3.fromRGB(22, 26, 44)
 RejoinBtn.BorderSizePixel = 0
 RejoinBtn.Text = "🔄 Rejoin Current Server"
 RejoinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 RejoinBtn.Font = Enum.Font.GothamBold
 RejoinBtn.TextSize = 13
-RejoinBtn.ZIndex = 4
+RejoinBtn.ZIndex = 13
 RejoinBtn.Parent = Pages["Server"]
 
 local RejoinCorner = Instance.new("UICorner")
@@ -728,234 +722,4 @@ RejoinCorner.Parent = RejoinBtn
 
 RejoinBtn.MouseButton1Click:Connect(function()
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end)
-
-local function applyTheme(themeName)
-    if not Themes[themeName] then return end
-    _G.G_LIGHT_SETTINGS.CurrentTheme = themeName
-    local theme = Themes[themeName]
-    
-    MainFrame.BackgroundColor3 = theme.Background
-    Header.BackgroundColor3 = theme.Header
-    Sidebar.BackgroundColor3 = theme.Sidebar
-    MainCorner.CornerRadius = theme.CornerRadius
-    HeaderCorner.CornerRadius = theme.CornerRadius
-    
-    for btnName, btn in pairs(TabButtons) do
-        local isSelected = Pages[btnName] and Pages[btnName].Visible
-        btn.BackgroundColor3 = isSelected and theme.Card or Color3.fromRGB(0, 0, 0)
-        btn.TextColor3 = isSelected and theme.Accent or theme.SubText
-    end
-end
-
-for themeName, _ in pairs(Themes) do
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, -6, 0, 40)
-    Btn.BackgroundColor3 = Themes.Cosmic.Card
-    Btn.BorderSizePixel = 0
-    Btn.Text = "Theme: " .. themeName
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 13
-    Btn.ZIndex = 4
-    Btn.Parent = Pages["Themes"]
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
-    Corner.Parent = Btn
-    
-    Btn.MouseButton1Click:Connect(function()
-        applyTheme(themeName)
-    end)
-end
-
----------------------------------------------------------
--- AUTO MONEY FARM LOGIC (FLY BYPASS + NOCLIP)
----------------------------------------------------------
-local function getClosestCoin()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local hrp = char.HumanoidRootPart
-
-    local closestCoin = nil
-    local shortestDistance = math.huge
-
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        local name = obj.Name:lower()
-        if (name == "coin" or name == "coincontainer" or name == "goldcoin" or obj:FindFirstChild("CoinID")) and not obj:IsDescendantOf(char) then
-            local coinPart = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
-            if coinPart and (obj:FindFirstChild("TouchInterest") or coinPart:FindFirstChild("TouchInterest")) then
-                local dist = (hrp.Position - coinPart.Position).Magnitude
-                if dist < shortestDistance then
-                    shortestDistance = dist
-                    closestCoin = coinPart
-                end
-            end
-        end
-    end
-
-    return closestCoin
-end
-
--- Noclip loop for Farm & Noclip Mode
-RunService.Stepped:Connect(function()
-    if _G.G_LIGHT_SETTINGS.AutoCoinFarm or _G.G_LIGHT_SETTINGS.NoclipEnabled then
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end
-end)
-
--- Fly Farm Loop
-RunService.Heartbeat:Connect(function(deltaTime)
-    if not _G.G_LIGHT_SETTINGS.AutoCoinFarm then return end
-
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not humanoid then return end
-
-    humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-
-    local targetCoin = getClosestCoin()
-    if targetCoin then
-        local targetPos = targetCoin.Position
-        local direction = (targetPos - hrp.Position).Unit
-        local distance = (targetPos - hrp.Position).Magnitude
-
-        if distance > 1.5 then
-            local speed = _G.G_LIGHT_SETTINGS.CoinFarmSpeed or 25
-            hrp.CFrame = hrp.CFrame + (direction * math.min(distance, speed * deltaTime * 8))
-            hrp.Velocity = Vector3.new(0, 0, 0)
-        else
-            hrp.CFrame = CFrame.new(targetPos)
-        end
-    end
-end)
-
----------------------------------------------------------
--- MM2 ESP SYSTEM
----------------------------------------------------------
-local RadarWarning = Instance.new("TextLabel")
-RadarWarning.Name = "DangerRadarWarning"
-RadarWarning.Size = UDim2.new(0, 320, 0, 40)
-RadarWarning.Position = UDim2.new(0.5, -160, 0.12, 0)
-RadarWarning.BackgroundColor3 = Color3.fromRGB(220, 30, 50)
-RadarWarning.Text = "⚠️ DANGER: MURDERER NEARBY! ⚠️"
-RadarWarning.TextColor3 = Color3.fromRGB(255, 255, 255)
-RadarWarning.TextSize = 14
-RadarWarning.Font = Enum.Font.GothamBold
-RadarWarning.Visible = false
-RadarWarning.ZIndex = 50
-RadarWarning.Parent = ScreenGui
-
-local RadarCorner = Instance.new("UICorner")
-RadarCorner.CornerRadius = UDim.new(0, 8)
-RadarCorner.Parent = RadarWarning
-
-local function getMM2Role(player)
-    if not player or not player.Character then return "Innocent" end
-    
-    local char = player.Character
-    local backpack = player:FindFirstChild("Backpack")
-
-    local function scanContainer(container)
-        if not container then return nil end
-        for _, item in pairs(container:GetChildren()) do
-            if item:IsA("Tool") then
-                local itemName = item.Name:lower()
-                
-                if itemName:find("knife") or itemName:find("blade") or itemName:find("scythe") or item:FindFirstChild("KnifeServer") or item:FindFirstChild("KnifeClient") then
-                    return "Murderer"
-                end
-                
-                if itemName:find("gun") or itemName:find("revolver") or itemName:find("sheriff") or itemName:find("luger") or item:FindFirstChild("GunServer") or item:FindFirstChild("GunClient") then
-                    return "Sheriff"
-                end
-            end
-        end
-        return nil
-    end
-
-    return scanContainer(char) or scanContainer(backpack) or "Innocent"
-end
-
-local function applyCoinESP(obj)
-    if not _G.G_LIGHT_SETTINGS.ESP_Roles then return end
-    if obj:FindFirstChild("GLightCoinHighlight") then return end
-
-    local hl = Instance.new("Highlight")
-    hl.Name = "GLightCoinHighlight"
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.FillColor = Color3.fromRGB(255, 215, 0)
-    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-    hl.FillTransparency = 0.2
-    hl.OutlineTransparency = 0
-    hl.Adornee = obj
-    hl.Parent = obj
-end
-
-local function clearCoinESP(obj)
-    local hl = obj:FindFirstChild("GLightCoinHighlight")
-    if hl then hl:Destroy() end
-end
-
-task.spawn(function()
-    while task.wait(0.2) do
-        if _G.G_LIGHT_SETTINGS.ESP_Roles then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    local char = player.Character
-                    local hl = char:FindFirstChild("GLightESP")
-                    
-                    if not hl then
-                        hl = Instance.new("Highlight")
-                        hl.Name = "GLightESP"
-                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        hl.Adornee = char
-                        hl.Parent = char
-                    end
-                    
-                    local role = getMM2Role(player)
-                    if role == "Murderer" then
-                        hl.FillColor = Color3.fromRGB(255, 30, 30)
-                        hl.OutlineColor = Color3.fromRGB(255, 100, 100)
-                    elseif role == "Sheriff" then
-                        hl.FillColor = Color3.fromRGB(0, 150, 255)
-                        hl.OutlineColor = Color3.fromRGB(120, 200, 255)
-                    else
-                        hl.FillColor = Color3.fromRGB(50, 255, 100)
-                        hl.OutlineColor = Color3.fromRGB(150, 255, 180)
-                    end
-                    hl.FillTransparency = 0.35
-                    hl.OutlineTransparency = 0
-                    hl.Enabled = true
-                end
-            end
-            
-            for _, desc in pairs(Workspace:GetDescendants()) do
-                local name = desc.Name:lower()
-                if (name == "coincontainer" or name == "coin" or name == "goldcoin") and (desc:IsA("Model") or desc:IsA("BasePart")) then
-                    if not desc:IsDescendantOf(LocalPlayer.Character) then
-                        applyCoinESP(desc)
-                    end
-                end
-            end
-        else
-            for _, player in pairs(Players:GetPlayers()) do
-                if player.Character and player.Character:FindFirstChild("GLightESP") then
-                    player.Character.GLightESP:Destroy()
-                end
-            end
-            for _, desc in pairs(Workspace:GetDescendants()) do
-                clearCoinESP(desc)
-            end
-        end
-    end
 end)
