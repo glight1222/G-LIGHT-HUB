@@ -1,611 +1,412 @@
--- ========================================================
---    G LIGHT HUB v5.0 - THEMES & CUSTOMIZATION EDITION
--- ========================================================
-
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerName = LocalPlayer.DisplayName or LocalPlayer.Name
 
--- Контейнер GUI
-local ParentContainer
-local success, result = pcall(function()
-    if gethui then return gethui() end
-    if syn and syn.protect_gui then
-        local sg = Instance.new("ScreenGui")
-        syn.protect_gui(sg)
-        return sg
-    end
-    return CoreGui:FindFirstChild("RobloxGui") or LocalPlayer:WaitForChild("PlayerGui")
-end)
-
-ParentContainer = success and result or LocalPlayer:WaitForChild("PlayerGui")
-
-if ParentContainer:FindFirstChild("GLightHub_v50") then
-    ParentContainer.GLightHub_v50:Destroy()
-end
-
-local GLightHub = Instance.new("ScreenGui")
-GLightHub.Name = "GLightHub_v50"
-GLightHub.ResetOnSpawn = false
-GLightHub.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-GLightHub.Parent = ParentContainer
-
--- Глобальное Состояние
-local State = {
-    WalkSpeed = 16, SpeedEnabled = false,
-    JumpPower = 50, JumpEnabled = false,
-    Noclip = false, InfJump = false, DashEnabled = true,
-    
-    KillAura = false, AuraRange = 15,
-    RoleESP = true, GunESP = true, DangerRadar = true,
-    TurboFPS = false,
-    
-    CurrentTheme = "Cosmic",
-    
-    MurderColor = Color3.fromRGB(255, 35, 35),
-    SheriffColor = Color3.fromRGB(0, 140, 255),
-    InnocentColor = Color3.fromRGB(40, 220, 90)
+-- Global variables
+_G.G_LIGHT_SETTINGS = _G.G_LIGHT_SETTINGS or {
+    ESP_Roles = false,
+    CustomSpeedEnabled = false,
+    SpeedValue = 16,
+    InfJump = false,
+    DashEnabled = false,
+    KillAura = false,
+    DangerRadar = false,
+    CurrentTheme = "Default",
+    FlyEnabled = false,
+    FlySpeed = 1
 }
 
--- Главный Интерфейс
+local Themes = {
+    Default = {
+        Background = Color3.fromRGB(20, 20, 25),
+        Header = Color3.fromRGB(30, 30, 40),
+        Accent = Color3.fromRGB(0, 170, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        SubText = Color3.fromRGB(180, 180, 200),
+        CornerRadius = UDim.new(0, 8)
+    },
+    BlackHole = {
+        Background = Color3.fromRGB(10, 5, 15),
+        Header = Color3.fromRGB(20, 10, 30),
+        Accent = Color3.fromRGB(140, 0, 255),
+        Text = Color3.fromRGB(240, 220, 255),
+        SubText = Color3.fromRGB(150, 120, 180),
+        CornerRadius = UDim.new(0, 12)
+    },
+    Minecraft = {
+        Background = Color3.fromRGB(40, 40, 40),
+        Header = Color3.fromRGB(60, 60, 60),
+        Accent = Color3.fromRGB(85, 255, 85),
+        Text = Color3.fromRGB(255, 255, 255),
+        SubText = Color3.fromRGB(170, 170, 170),
+        CornerRadius = UDim.new(0, 0)
+    }
+}
+
+-- ScreenGui Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GLightHubUI"
+ScreenGui.ResetOnSpawn = false
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 680, 0, 440)
-MainFrame.Position = UDim2.new(0.5, -340, 0.5, -220)
-MainFrame.BackgroundColor3 = Color3.fromRGB(8, 12, 22)
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 520, 0, 340)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -170)
+MainFrame.BackgroundColor3 = Themes.Default.Background
 MainFrame.BorderSizePixel = 0
-MainFrame.ClipsDescendants = true
-MainFrame.Visible = false
-MainFrame.Parent = GLightHub
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-local MainCorner = Instance.new("UICorner", MainFrame)
-MainCorner.CornerRadius = UDim.new(0, 12)
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = Themes.Default.CornerRadius
+MainCorner.Parent = MainFrame
 
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(0, 170, 255)
-MainStroke.Thickness = 1.5
-MainStroke.Transparency = 0.4
+-- Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.BackgroundColor3 = Themes.Default.Header
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
 
--- 200+ Звезд на фоне UI
-local UIStarsFrame = Instance.new("Frame", MainFrame)
-UIStarsFrame.Size = UDim2.new(1, 0, 1, 0)
-UIStarsFrame.BackgroundTransparency = 1
-UIStarsFrame.ZIndex = 1
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = Themes.Default.CornerRadius
+HeaderCorner.Parent = Header
 
-task.spawn(function()
-    for i = 1, 200 do
-        local star = Instance.new("Frame", UIStarsFrame)
-        local sz = math.random(1, 3)
-        star.Size = UDim2.new(0, sz, 0, sz)
-        star.BackgroundColor3 = Color3.fromRGB(180, 225, 255)
-        star.ZIndex = 1
-        Instance.new("UICorner", star).CornerRadius = UDim.new(1, 0)
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "G LIGHT HUB v5.0"
+Title.TextColor3 = Themes.Default.Accent
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
 
-        local function FloatStar()
-            local startX, startY = math.random(-10, 110) / 100, math.random(-10, 110) / 100
-            star.Position = UDim2.new(startX, 0, startY, 0)
-            star.BackgroundTransparency = math.random(10, 90) / 100
-            
-            local duration = math.random(15, 45)
-            local endX, endY = startX + (math.random(-15, 15) / 100), startY + (math.random(-15, 15) / 100)
-            
-            local tween = TweenService:Create(star, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-                Position = UDim2.new(endX, 0, endY, 0),
-                BackgroundTransparency = math.random(20, 80) / 100
-            })
-            tween:Play()
-            tween.Completed:Wait()
-            if GLightHub.Parent then FloatStar() end
-        end
-        task.spawn(FloatStar)
-    end
-end)
+-- Sidebar Navigation
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 130, 1, -40)
+Sidebar.Position = UDim2.new(0, 0, 0, 40)
+Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
 
--- TopBar
-local TopBar = Instance.new("Frame", MainFrame)
-TopBar.Size = UDim2.new(1, 0, 0, 45)
-TopBar.BackgroundColor3 = Color3.fromRGB(12, 18, 32)
-TopBar.BackgroundTransparency = 0.2
-TopBar.BorderSizePixel = 0
-TopBar.ZIndex = 5
+local SidebarList = Instance.new("UIListLayout")
+SidebarList.Parent = Sidebar
+SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarList.Padding = UDim.new(0, 5)
 
-local LogoLabel = Instance.new("TextLabel", TopBar)
-LogoLabel.Size = UDim2.new(0, 350, 1, 0)
-LogoLabel.Position = UDim2.new(0, 15, 0, 0)
-LogoLabel.BackgroundTransparency = 1
-LogoLabel.Text = "✨ G LIGHT HUB v5.0  [THEMES EDITION]"
-LogoLabel.TextColor3 = Color3.fromRGB(0, 215, 255)
-LogoLabel.Font = Enum.Font.GothamBold
-LogoLabel.TextSize = 15
-LogoLabel.TextXAlignment = Enum.TextXAlignment.Left
-LogoLabel.ZIndex = 6
+-- Content Area
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, -135, 1, -45)
+Content.Position = UDim2.new(0, 135, 0, 45)
+Content.BackgroundTransparency = 1
+Content.Parent = MainFrame
 
-local CloseBtn = Instance.new("TextButton", TopBar)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -38, 0.5, -15)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(24, 34, 54)
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(200, 220, 255)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 14
-CloseBtn.ZIndex = 6
-local CloseCorner = Instance.new("UICorner", CloseBtn)
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseBtn.MouseButton1Click:Connect(function() GLightHub:Destroy() end)
+local Pages = {}
 
--- Перетаскивание
-local dragging, dragStart, startPos
-TopBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true dragStart = input.Position startPos = MainFrame.Position end
-end)
-TopBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- SideBar & Content
-local SideBar = Instance.new("Frame", MainFrame)
-SideBar.Size = UDim2.new(0, 160, 1, -45)
-SideBar.Position = UDim2.new(0, 0, 0, 45)
-SideBar.BackgroundColor3 = Color3.fromRGB(10, 14, 25)
-SideBar.BackgroundTransparency = 0.3
-SideBar.BorderSizePixel = 0
-SideBar.ZIndex = 5
-
-local SideLayout = Instance.new("UIListLayout", SideBar)
-SideLayout.Padding = UDim.new(0, 6)
-Instance.new("UIPadding", SideBar).PaddingTop = UDim.new(0, 10)
-
-local ContentArea = Instance.new("Frame", MainFrame)
-ContentArea.Size = UDim2.new(1, -170, 1, -55)
-ContentArea.Position = UDim2.new(0, 165, 0, 50)
-ContentArea.BackgroundTransparency = 1
-ContentArea.ZIndex = 5
-
-local Tabs = {}
-local AllCards = {}
-local ActiveTabBtn = nil
-
-local function CreateTab(name, icon)
-    local TabButton = Instance.new("TextButton", SideBar)
-    TabButton.Size = UDim2.new(1, -20, 0, 36)
-    TabButton.Position = UDim2.new(0, 10, 0, 0)
-    TabButton.BackgroundColor3 = Color3.fromRGB(16, 24, 40)
-    TabButton.Text = "  " .. icon .. "  " .. name
-    TabButton.TextColor3 = Color3.fromRGB(160, 180, 210)
-    TabButton.Font = Enum.Font.GothamMedium
-    TabButton.TextSize = 13
-    TabButton.TextXAlignment = Enum.TextXAlignment.Left
-    TabButton.ZIndex = 6
-    local TabCorner = Instance.new("UICorner", TabButton)
-    TabCorner.CornerRadius = UDim.new(0, 6)
-
-    local Page = Instance.new("ScrollingFrame", ContentArea)
-    Page.Size = UDim2.new(1, 0, 1, 0)
+local function createPage(name)
+    local Page = Instance.new("ScrollingFrame")
+    Page.Size = UDim2.new(1, -10, 1, 0)
     Page.BackgroundTransparency = 1
-    Page.BorderSizePixel = 0
-    Page.ScrollBarThickness = 2
     Page.Visible = false
-    Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    Page.ZIndex = 6
-    Instance.new("UIListLayout", Page).Padding = UDim.new(0, 10)
-
-    TabButton.MouseButton1Click:Connect(function()
-        for _, t in pairs(Tabs) do
-            t.Page.Visible = false
-            TweenService:Create(t.Btn, TweenInfo.new(0.2), {BackgroundColor3 = State.CurrentTheme == "Minecraft" and Color3.fromRGB(30, 45, 25) or (State.CurrentTheme == "BlackHole" and Color3.fromRGB(20, 10, 30) or Color3.fromRGB(16, 24, 40)), TextColor3 = Color3.fromRGB(160, 180, 210)}):Play()
-        end
-        Page.Visible = true
-        ActiveTabBtn = TabButton
-        local activeColor = State.CurrentTheme == "Minecraft" and Color3.fromRGB(85, 140, 40) or (State.CurrentTheme == "BlackHole" and Color3.fromRGB(140, 30, 200) or Color3.fromRGB(0, 130, 240))
-        TweenService:Create(TabButton, TweenInfo.new(0.2), {BackgroundColor3 = activeColor, TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-    end)
-    table.insert(Tabs, {Btn = TabButton, Page = Page, Corner = TabCorner})
-    if #Tabs == 1 then ActiveTabBtn = TabButton Page.Visible = true TabButton.BackgroundColor3 = Color3.fromRGB(0, 130, 240) TabButton.TextColor3 = Color3.fromRGB(255, 255, 255) end
+    Page.ScrollBarThickness = 4
+    Page.Parent = Content
+    
+    local List = Instance.new("UIListLayout")
+    List.Parent = Page
+    List.SortOrder = Enum.SortOrder.LayoutOrder
+    List.Padding = UDim.new(0, 8)
+    
+    Pages[name] = Page
     return Page
 end
 
-local function AddToggle(page, text, defaultState, callback)
-    local Card = Instance.new("Frame", page)
-    Card.Size = UDim2.new(1, -10, 0, 50)
-    Card.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
-    Card.BackgroundTransparency = 0.2
-    Card.ZIndex = 6
-    local CardCorner = Instance.new("UICorner", Card)
-    CardCorner.CornerRadius = UDim.new(0, 8)
-    table.insert(AllCards, {Frame = Card, Corner = CardCorner})
+createPage("MM2")
+createPage("Movement")
+createPage("Combat")
+createPage("Themes")
 
-    local Label = Instance.new("TextLabel", Card)
-    Label.Size = UDim2.new(0.7, 0, 1, 0)
-    Label.Position = UDim2.new(0, 12, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Color3.fromRGB(220, 235, 255)
-    Label.Font = Enum.Font.GothamSemibold
-    Label.TextSize = 13
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.ZIndex = 7
+Pages["MM2"].Visible = true
 
-    local Switch = Instance.new("TextButton", Card)
-    Switch.Size = UDim2.new(0, 46, 0, 24)
-    Switch.Position = UDim2.new(1, -58, 0.5, -12)
-    Switch.BackgroundColor3 = defaultState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(30, 42, 65)
-    Switch.Text = ""
-    Switch.ZIndex = 7
-    Instance.new("UICorner", Switch).CornerRadius = UDim.new(1, 0)
-
-    local Dot = Instance.new("Frame", Switch)
-    Dot.Size = UDim2.new(0, 18, 0, 18)
-    Dot.Position = defaultState and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
-    Dot.BackgroundColor3 = defaultState and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(140, 160, 190)
-    Dot.ZIndex = 8
-    Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
-
-    local state = defaultState
-    Switch.MouseButton1Click:Connect(function()
-        state = not state
-        local targetPos = state and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
-        local activeThemeColor = State.CurrentTheme == "Minecraft" and Color3.fromRGB(85, 170, 40) or (State.CurrentTheme == "BlackHole" and Color3.fromRGB(160, 40, 230) or Color3.fromRGB(0, 170, 255))
-        local targetBg = state and activeThemeColor or Color3.fromRGB(30, 42, 65)
-        TweenService:Create(Dot, TweenInfo.new(0.2), {Position = targetPos}):Play()
-        TweenService:Create(Switch, TweenInfo.new(0.2), {BackgroundColor3 = targetBg}):Play()
-        callback(state)
+local function createTabButton(name)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 0, 35)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = name
+    Btn.TextColor3 = Themes.Default.SubText
+    Btn.TextSize = 15
+    Btn.Font = Enum.Font.SourceSans
+    Btn.Parent = Sidebar
+    
+    Btn.MouseButton1Click:Connect(function()
+        for pageName, page in pairs(Pages) do
+            page.Visible = (pageName == name)
+        end
+        for _, button in pairs(Sidebar:GetChildren()) do
+            if button:IsA("TextButton") then
+                button.TextColor3 = (button.Text == name) and Themes.Default.Accent or Themes.Default.SubText
+            end
+        end
     end)
 end
 
-local function AddSlider(page, text, min, max, defaultVal, callback)
-    local Card = Instance.new("Frame", page)
-    Card.Size = UDim2.new(1, -10, 0, 60)
-    Card.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
-    Card.BackgroundTransparency = 0.2
-    Card.ZIndex = 6
-    local CardCorner = Instance.new("UICorner", Card)
-    CardCorner.CornerRadius = UDim.new(0, 8)
-    table.insert(AllCards, {Frame = Card, Corner = CardCorner})
+createTabButton("MM2")
+createTabButton("Movement")
+createTabButton("Combat")
+createTabButton("Themes")
 
-    local Label = Instance.new("TextLabel", Card)
-    Label.Size = UDim2.new(0.6, 0, 0, 25)
-    Label.Position = UDim2.new(0, 12, 0, 6)
+-- Helper UI Elements
+local function createToggle(page, text, settingKey, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -10, 0, 35)
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = page
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].CornerRadius
+    Corner.Parent = Frame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.7, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
-    Label.TextColor3 = Color3.fromRGB(220, 235, 255)
-    Label.Font = Enum.Font.GothamSemibold
-    Label.TextSize = 13
+    Label.TextColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Text
+    Label.TextSize = 14
+    Label.Font = Enum.Font.SourceSans
     Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.ZIndex = 7
-
-    local ValLabel = Instance.new("TextLabel", Card)
-    ValLabel.Size = UDim2.new(0.3, 0, 0, 25)
-    ValLabel.Position = UDim2.new(0.7, -12, 0, 6)
-    ValLabel.BackgroundTransparency = 1
-    ValLabel.Text = tostring(defaultVal)
-    ValLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-    ValLabel.Font = Enum.Font.GothamBold
-    ValLabel.TextSize = 13
-    ValLabel.TextXAlignment = Enum.TextXAlignment.Right
-    ValLabel.ZIndex = 7
-
-    local SliderBack = Instance.new("Frame", Card)
-    SliderBack.Size = UDim2.new(1, -24, 0, 8)
-    SliderBack.Position = UDim2.new(0, 12, 1, -16)
-    SliderBack.BackgroundColor3 = Color3.fromRGB(30, 42, 65)
-    SliderBack.ZIndex = 7
-    Instance.new("UICorner", SliderBack).CornerRadius = UDim.new(1, 0)
-
-    local Fill = Instance.new("Frame", SliderBack)
-    Fill.Size = UDim2.new((defaultVal - min) / (max - min), 0, 1, 0)
-    Fill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    Fill.ZIndex = 8
-    Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-
-    local sliding = false
-    local function UpdateSlider(input)
-        local ratio = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
-        local value = math.floor(min + (max - min) * ratio)
-        Fill.Size = UDim2.new(ratio, 0, 1, 0)
-        ValLabel.Text = tostring(value)
-        callback(value)
-    end
-    SliderBack.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then sliding = true UpdateSlider(input) end end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end end)
-    UserInputService.InputChanged:Connect(function(input) if sliding and input.UserInputType == Enum.UserInputType.MouseMovement then UpdateSlider(input) end end)
-end
-
-local function AddButton(page, text, callback)
-    local Card = Instance.new("Frame", page)
-    Card.Size = UDim2.new(1, -10, 0, 50)
-    Card.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
-    Card.BackgroundTransparency = 0.2
-    Card.ZIndex = 6
-    local CardCorner = Instance.new("UICorner", Card)
-    CardCorner.CornerRadius = UDim.new(0, 8)
-    table.insert(AllCards, {Frame = Card, Corner = CardCorner})
-
-    local Btn = Instance.new("TextButton", Card)
-    Btn.Size = UDim2.new(1, -20, 1, -12)
-    Btn.Position = UDim2.new(0, 10, 0, 6)
-    Btn.BackgroundColor3 = Color3.fromRGB(0, 130, 240)
-    Btn.Text = text
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 13
-    Btn.ZIndex = 7
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-
-    Btn.MouseButton1Click:Connect(callback)
-    return Btn
-end
-
--- Система Тем
-local ThemeButtons = {}
-
-local function ApplyTheme(themeName)
-    if State.CurrentTheme == themeName then return end
-    State.CurrentTheme = themeName
-
-    local mainBg, topBg, sideBg, strokeColor, accentColor, radius
+    Label.Parent = Frame
     
-    if themeName == "Cosmic" then
-        mainBg = Color3.fromRGB(8, 12, 22)
-        topBg = Color3.fromRGB(12, 18, 32)
-        sideBg = Color3.fromRGB(10, 14, 25)
-        strokeColor = Color3.fromRGB(0, 170, 255)
-        accentColor = Color3.fromRGB(0, 130, 240)
-        radius = 12
-        UIStarsFrame.Visible = true
-    elseif themeName == "Minecraft" then
-        mainBg = Color3.fromRGB(24, 18, 12)
-        topBg = Color3.fromRGB(35, 26, 18)
-        sideBg = Color3.fromRGB(18, 14, 10)
-        strokeColor = Color3.fromRGB(85, 170, 40)
-        accentColor = Color3.fromRGB(85, 140, 40)
-        radius = 0
-        UIStarsFrame.Visible = false
-    elseif themeName == "BlackHole" then
-        mainBg = Color3.fromRGB(5, 3, 8)
-        topBg = Color3.fromRGB(12, 6, 18)
-        sideBg = Color3.fromRGB(8, 4, 12)
-        strokeColor = Color3.fromRGB(140, 30, 200)
-        accentColor = Color3.fromRGB(140, 30, 200)
-        radius = 16
-        UIStarsFrame.Visible = true
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0, 45, 0, 22)
+    Btn.Position = UDim2.new(1, -55, 0.5, -11)
+    Btn.BackgroundColor3 = _G.G_LIGHT_SETTINGS[settingKey] and Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent or Color3.fromRGB(50, 50, 60)
+    Btn.Text = _G.G_LIGHT_SETTINGS[settingKey] and "ON" or "OFF"
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.TextSize = 12
+    Btn.Parent = Frame
+    
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].CornerRadius
+    BtnCorner.Parent = Btn
+    
+    Btn.MouseButton1Click:Connect(function()
+        _G.G_LIGHT_SETTINGS[settingKey] = not _G.G_LIGHT_SETTINGS[settingKey]
+        Btn.BackgroundColor3 = _G.G_LIGHT_SETTINGS[settingKey] and Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent or Color3.fromRGB(50, 50, 60)
+        Btn.Text = _G.G_LIGHT_SETTINGS[settingKey] and "ON" or "OFF"
+        if callback then callback(_G.G_LIGHT_SETTINGS[settingKey]) end
+    end)
+end
+
+local function createSlider(page, text, minVal, maxVal, defaultVal, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -10, 0, 45)
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = page
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].CornerRadius
+    Corner.Parent = Frame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -20, 0, 20)
+    Label.Position = UDim2.new(0, 10, 0, 2)
+    Label.BackgroundTransparency = 1
+    Label.Text = text .. ": " .. tostring(defaultVal)
+    Label.TextColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Text
+    Label.TextSize = 14
+    Label.Font = Enum.Font.SourceSans
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Frame
+    
+    local SliderBack = Instance.new("Frame")
+    SliderBack.Size = UDim2.new(1, -20, 0, 8)
+    SliderBack.Position = UDim2.new(0, 10, 0, 26)
+    SliderBack.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    SliderBack.BorderSizePixel = 0
+    SliderBack.Parent = Frame
+    
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Size = UDim2.new((defaultVal - minVal)/(maxVal - minVal), 0, 1, 0)
+    SliderFill.BackgroundColor3 = Themes[_G.G_LIGHT_SETTINGS.CurrentTheme].Accent
+    SliderFill.BorderSizePixel = 0
+    SliderFill.Parent = SliderBack
+    
+    local dragging = false
+    local function update(input)
+        local pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
+        local val = math.floor(minVal + (maxVal - minVal) * pos)
+        SliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        Label.Text = text .. ": " .. tostring(val)
+        if callback then callback(val) end
     end
-
-    MainFrame.BackgroundColor3 = mainBg
-    TopBar.BackgroundColor3 = topBg
-    SideBar.BackgroundColor3 = sideBg
-    MainStroke.Color = strokeColor
-    MainCorner.CornerRadius = UDim.new(0, radius)
-    LogoLabel.TextColor3 = strokeColor
-
-    for _, c in pairs(AllCards) do
-        c.Corner.CornerRadius = UDim.new(0, radius > 0 and 8 or 0)
-    end
-
-    for _, t in pairs(Tabs) do
-        t.Corner.CornerRadius = UDim.new(0, radius > 0 and 6 or 0)
-        if t.Btn == ActiveTabBtn then
-            t.Btn.BackgroundColor3 = accentColor
+    
+    SliderBack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            update(input)
         end
-    end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            update(input)
+        end
+    end)
+end
 
-    -- Обновление кнопок в меню тем
-    for tName, btn in pairs(ThemeButtons) do
-        if tName == themeName then
-            btn.Text = "✅ " .. tName .. " [ACTIVE]"
-            btn.BackgroundColor3 = Color3.fromRGB(50, 60, 70)
-            btn.AutoButtonColor = false
-        else
-            btn.Text = "🎨 Switch to " .. tName
-            btn.BackgroundColor3 = accentColor
-            btn.AutoButtonColor = true
+-- Populate MM2 Page
+createToggle(Pages["MM2"], "Role ESP", "ESP_Roles")
+
+-- Populate Movement Page
+createToggle(Pages["Movement"], "Custom Speed", "CustomSpeedEnabled", function(v)
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
+end)
+createSlider(Pages["Movement"], "Speed Value", 16, 100, 16, function(v)
+    _G.G_LIGHT_SETTINGS.SpeedValue = v
+end)
+createToggle(Pages["Movement"], "Inf Jump", "InfJump")
+createToggle(Pages["Movement"], "Dash (Q key)", "DashEnabled")
+
+-- NEW: FLY & FLY SPEED SLIDER
+createToggle(Pages["Movement"], "Fly", "FlyEnabled")
+createSlider(Pages["Movement"], "Fly Speed", 1, 5, 1, function(v)
+    _G.G_LIGHT_SETTINGS.FlySpeed = v
+end)
+
+-- Populate Combat Page
+createToggle(Pages["Combat"], "Kill Aura", "KillAura")
+createToggle(Pages["Combat"], "Danger Radar", "DangerRadar")
+
+-- Populate Themes Page
+local function applyTheme(themeName)
+    if _G.G_LIGHT_SETTINGS.CurrentTheme == themeName then return end
+    _G.G_LIGHT_SETTINGS.CurrentTheme = themeName
+    local theme = Themes[themeName]
+    
+    MainFrame.BackgroundColor3 = theme.Background
+    Header.BackgroundColor3 = theme.Header
+    Title.TextColor3 = theme.Accent
+    MainCorner.CornerRadius = theme.CornerRadius
+    HeaderCorner.CornerRadius = theme.CornerRadius
+    
+    for _, btn in pairs(Sidebar:GetChildren()) do
+        if btn:IsA("TextButton") then
+            btn.TextColor3 = (btn.Text == Pages[btn.Text].Visible) and theme.Accent or theme.SubText
         end
     end
 end
 
--- Вкладки
-local CombatTab = CreateTab("Combat", "⚔️")
-AddToggle(CombatTab, "Smart Auto Attack (Kill Aura)", false, function(v) State.KillAura = v end)
-AddSlider(CombatTab, "Aura Distance (Studs)", 5, 40, 15, function(v) State.AuraRange = v end)
+for themeName, _ in pairs(Themes) do
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, -10, 0, 35)
+    Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    Btn.BorderSizePixel = 0
+    Btn.Text = "Theme: " .. themeName
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.TextSize = 14
+    Btn.Parent = Pages["Themes"]
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Btn
+    
+    Btn.MouseButton1Click:Connect(function()
+        applyTheme(themeName)
+    end)
+end
 
-local MM2Tab = CreateTab("MM2 ESP", "🔪")
-AddToggle(MM2Tab, "Role Colors ESP", true, function(v) State.RoleESP = v end)
-AddToggle(MM2Tab, "Highlight Dropped Gun", true, function(v) State.GunESP = v end)
-AddToggle(MM2Tab, "Danger Radar Pulse", true, function(v) State.DangerRadar = v end)
-
-local MovementTab = CreateTab("Movement", "🏃")
-AddToggle(MovementTab, "Enable Custom Speed", false, function(v) State.SpeedEnabled = v end)
-AddSlider(MovementTab, "WalkSpeed Value", 16, 250, 50, function(v) State.WalkSpeed = v end)
-AddToggle(MovementTab, "Enable Custom Jump", false, function(v) State.JumpEnabled = v end)
-AddSlider(MovementTab, "Jump Power", 50, 300, 100, function(v) State.JumpPower = v end)
-AddToggle(MovementTab, "Kinetic Dash (Press 'Q')", true, function(v) State.DashEnabled = v end)
-AddToggle(MovementTab, "Noclip (Pass Through Walls)", false, function(v) State.Noclip = v end)
-AddToggle(MovementTab, "Infinite Jump", false, function(v) State.InfJump = v end)
-
-local ThemesTab = CreateTab("Themes", "🎨")
-ThemeButtons["Cosmic"] = AddButton(ThemesTab, "✅ Cosmic [ACTIVE]", function() ApplyTheme("Cosmic") end)
-ThemeButtons["Minecraft"] = AddButton(ThemesTab, "🎨 Switch to Minecraft", function() ApplyTheme("Minecraft") end)
-ThemeButtons["BlackHole"] = AddButton(ThemesTab, "🎨 Switch to BlackHole", function() ApplyTheme("BlackHole") end)
-ThemeButtons["Cosmic"].BackgroundColor3 = Color3.fromRGB(50, 60, 70)
-
-local SettingsTab = CreateTab("Settings", "⚙️")
-AddToggle(SettingsTab, "⚡ Turbo FPS Boost", false, function(v)
-    State.TurboFPS = v
-    if v then
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-        for _, v in pairs(game:GetDescendants()) do
-            if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic end
-            if v:IsA("PostEffect") or v:IsA("BlurEffect") then v.Enabled = false end
-        end
-    end
-end)
-
-AddButton(SettingsTab, "🔄 Quick Rejoin Server", function()
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end)
-
--- Danger Radar
-local RadarFrame = Instance.new("Frame", GLightHub)
-RadarFrame.Size = UDim2.new(1, 0, 1, 0)
-RadarFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-RadarFrame.BackgroundTransparency = 1
-RadarFrame.ZIndex = 150
-local RadarStroke = Instance.new("UIStroke", RadarFrame)
-RadarStroke.Color = Color3.fromRGB(255, 0, 0)
-RadarStroke.Thickness = 6
-RadarStroke.Transparency = 1
-
--- Управление
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.Q and State.DashEnabled then
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local bv = Instance.new("BodyVelocity", hrp)
-            bv.MaxForce = Vector3.new(1e5, 0, 1e5)
-            bv.Velocity = hrp.CFrame.LookVector * 120
-            task.wait(0.18) bv:Destroy()
-        end
-    end
-    if not gpe and input.KeyCode == Enum.KeyCode.RightControl then MainFrame.Visible = not MainFrame.Visible end
-end)
-
-UserInputService.JumpRequest:Connect(function()
-    if State.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
-RunService.Stepped:Connect(function()
+-- Fly Logic
+local bodyVel, bodyGyro
+RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
-    if char and char:FindFirstChildOfClass("Humanoid") then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if State.SpeedEnabled then hum.WalkSpeed = State.WalkSpeed end
-        if State.JumpEnabled then
-            hum.UseJumpPower = true
-            hum.JumpPower = State.JumpPower
-        end
-        if State.Noclip then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+        local hrp = char.HumanoidRootPart
+        local hum = char.Humanoid
+        
+        if _G.G_LIGHT_SETTINGS.FlyEnabled then
+            if not bodyVel then
+                bodyVel = Instance.new("BodyVelocity")
+                bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+                bodyVel.Parent = hrp
             end
-        end
-    end
-end)
-
--- Игровой цикл
-task.spawn(function()
-    local isRadarTweening = false
-    while task.wait(0.1) do
-        if not GLightHub.Parent then break end
-        local localChar = LocalPlayer.Character
-        local localHRP = localChar and localChar:FindFirstChild("HumanoidRootPart")
-        local myRole = "Innocent"
-        if localChar then
-            local backpack = LocalPlayer:FindFirstChild("Backpack")
-            if localChar:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")) then myRole = "Murder"
-            elseif localChar:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")) or localChar:FindFirstChild("Revolver") or (backpack and backpack:FindFirstChild("Revolver")) then myRole = "Sheriff" end
-        end
-        local murderClose = false
-
-        if State.KillAura and localChar and localChar:FindFirstChildOfClass("Humanoid") then
-            local backpack = LocalPlayer:FindFirstChild("Backpack")
-            if backpack then
-                local weapon = backpack:FindFirstChild("Knife") or backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver")
-                if weapon then localChar.Humanoid:EquipTool(weapon) end
+            if not bodyGyro then
+                bodyGyro = Instance.new("BodyGyro")
+                bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+                bodyGyro.P = 9e4
+                bodyGyro.Parent = hrp
             end
-        end
-        local equippedWeapon = localChar and (localChar:FindFirstChild("Knife") or localChar:FindFirstChild("Gun") or localChar:FindFirstChild("Revolver"))
-
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                local targetChar = plr.Character
-                local targetRole = "Innocent"
-                local backpack = plr:FindFirstChild("Backpack")
-                if targetChar:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")) then targetRole = "Murder"
-                elseif targetChar:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")) or targetChar:FindFirstChild("Revolver") or (backpack and backpack:FindFirstChild("Revolver")) then targetRole = "Sheriff" end
-
-                local dist = localHRP and (localHRP.Position - targetChar.HumanoidRootPart.Position).Magnitude or 999
-
-                if State.KillAura and localHRP and dist <= State.AuraRange and equippedWeapon then
-                    if myRole == "Murder" or (myRole == "Sheriff" and targetRole == "Murder") then
-                        equippedWeapon:Activate()
-                    end
-                end
-
-                if targetRole == "Murder" and dist <= 35 then murderClose = true end
-
-                if State.RoleESP then
-                    local color = (targetRole == "Murder" and State.MurderColor) or (targetRole == "Sheriff" and State.SheriffColor) or State.InnocentColor
-                    local txt = (targetRole == "Murder" and "[MURDER]") or (targetRole == "Sheriff" and "[SHERIFF]") or "[INNOCENT]"
-                    
-                    local hl = targetChar:FindFirstChild("GL_ESP") or Instance.new("Highlight", targetChar)
-                    hl.Name = "GL_ESP" hl.FillColor = color hl.FillTransparency = 0.4
-                    
-                    local head = targetChar:FindFirstChild("Head")
-                    if head then
-                        local bbg = head:FindFirstChild("GL_Name") or Instance.new("BillboardGui", head)
-                        bbg.Name = "GL_Name" bbg.Size = UDim2.new(0, 200, 0, 40) bbg.StudsOffset = Vector3.new(0, 2.5, 0) bbg.AlwaysOnTop = true
-                        local tag = bbg:FindFirstChild("Tag") or Instance.new("TextLabel", bbg)
-                        tag.Name = "Tag" tag.Size = UDim2.new(1,0,1,0) tag.BackgroundTransparency = 1 tag.Font = Enum.Font.GothamBold tag.TextSize = 13 tag.TextStrokeTransparency = 0.3
-                        tag.TextColor3 = color tag.Text = plr.DisplayName .. "\n" .. txt .. " [" .. math.floor(dist) .. "m]"
-                    end
-                end
-            end
-        end
-
-        if State.DangerRadar and murderClose then
-            if not isRadarTweening then isRadarTweening = true TweenService:Create(RadarFrame, TweenInfo.new(0.4), {BackgroundTransparency = 0.85}):Play() TweenService:Create(RadarStroke, TweenInfo.new(0.4), {Transparency = 0.2}):Play() end
+            
+            local cam = Workspace.CurrentCamera
+            bodyGyro.CFrame = cam.CFrame
+            
+            local moveDir = Vector3.new()
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            
+            local speedMultiplier = _G.G_LIGHT_SETTINGS.FlySpeed * 25
+            bodyVel.Velocity = moveDir * speedMultiplier
         else
-            if isRadarTweening then isRadarTweening = false TweenService:Create(RadarFrame, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play() TweenService:Create(RadarStroke, TweenInfo.new(0.4), {Transparency = 1}):Play() end
+            if bodyVel then bodyVel:Destroy() bodyVel = nil end
+            if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+        end
+        
+        -- Custom Speed Logic
+        if _G.G_LIGHT_SETTINGS.CustomSpeedEnabled then
+            hum.WalkSpeed = _G.G_LIGHT_SETTINGS.SpeedValue
         end
     end
 end)
 
--- Интро
-local IntroFrame = Instance.new("Frame", GLightHub)
-IntroFrame.Size = UDim2.new(1, 0, 1, 0)
-IntroFrame.BackgroundColor3 = Color3.fromRGB(5, 8, 15)
-IntroFrame.ZIndex = 200
-IntroFrame.ClipsDescendants = true
-
-task.spawn(function()
-    for i = 1, 150 do
-        local star = Instance.new("Frame", IntroFrame)
-        local sz = math.random(2, 6)
-        star.Size = UDim2.new(0, sz, 0, sz)
-        local startX, startY = math.random(-20, 120)/100, math.random(-30, 40)/100
-        star.Position = UDim2.new(startX, 0, startY, 0)
-        star.BackgroundColor3 = Color3.fromRGB(180, 230, 255)
-        star.BackgroundTransparency = math.random(10, 60) / 100
-        star.ZIndex = 201
-        Instance.new("UICorner", star).CornerRadius = UDim.new(1, 0)
-        TweenService:Create(star, TweenInfo.new(math.random(25, 55)/10, Enum.EasingStyle.Linear), {Position = UDim2.new(startX + 0.5, 0, startY + 0.8, 0)}):Play()
+-- Inf Jump Logic
+UserInputService.JumpRequest:Connect(function()
+    if _G.G_LIGHT_SETTINGS.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanState.Jumping)
     end
 end)
 
-local WelcomeLabel = Instance.new("TextLabel", IntroFrame)
-WelcomeLabel.Size, WelcomeLabel.Position = UDim2.new(1, 0, 0, 60), UDim2.new(0, 0, 0.42, 0)
-WelcomeLabel.BackgroundTransparency, WelcomeLabel.TextTransparency = 1, 1
-WelcomeLabel.Text = "WELCOME, " .. string.upper(PlayerName)
-WelcomeLabel.TextColor3, WelcomeLabel.Font, WelcomeLabel.TextSize = Color3.fromRGB(0, 210, 255), Enum.Font.GothamBold, 32
-WelcomeLabel.ZIndex = 206
-
-task.wait(0.3)
-TweenService:Create(WelcomeLabel, TweenInfo.new(0.8), {TextTransparency = 0}):Play()
-task.wait(2.5)
-TweenService:Create(WelcomeLabel, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
-local fadeOut = TweenService:Create(IntroFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1})
-fadeOut:Play()
-fadeOut.Completed:Connect(function() IntroFrame:Destroy() MainFrame.Visible = true end)
+-- Dash Logic
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        MainFrame.Visible = not MainFrame.Visible
+    elseif input.KeyCode == Enum.KeyCode.Q and _G.G_LIGHT_SETTINGS.DashEnabled then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * 15)
+        end
+    end
+end)
