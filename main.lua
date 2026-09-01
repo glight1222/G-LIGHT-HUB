@@ -441,7 +441,68 @@ for themeName, _ in pairs(Themes) do
     end)
 end
 
--- Fly & Custom Speed Loop
+-- DANGER RADAR WARNING OVERLAY
+local RadarWarning = Instance.new("TextLabel")
+RadarWarning.Name = "DangerRadarWarning"
+RadarWarning.Size = UDim2.new(0, 400, 0, 50)
+RadarWarning.Position = UDim2.new(0.5, -200, 0.15, 0)
+RadarWarning.BackgroundTransparency = 1
+RadarWarning.Text = "⚠️ MURDERER NEARBY! ⚠️"
+RadarWarning.TextColor3 = Color3.fromRGB(255, 30, 30)
+RadarWarning.TextSize = 24
+RadarWarning.Font = Enum.Font.SourceSansBold
+RadarWarning.Visible = false
+RadarWarning.Parent = ScreenGui
+
+-- MM2 HELPERS
+local function getMM2Role(player)
+    if not player or not player.Character then return "Innocent" end
+    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack")
+    
+    if char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")) then
+        return "Murderer"
+    elseif char:FindFirstChild("Revolver") or (backpack and backpack:FindFirstChild("Revolver")) or char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")) then
+        return "Sheriff"
+    end
+    return "Innocent"
+end
+
+-- ESP LOGIC
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            local highlight = hrp:FindFirstChild("GLightESP")
+            
+            if _G.G_LIGHT_SETTINGS.ESP_Roles then
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Name = "GLightESP"
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.Parent = hrp
+                end
+                
+                local role = getMM2Role(player)
+                if role == "Murderer" then
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
+                elseif role == "Sheriff" then
+                    highlight.FillColor = Color3.fromRGB(0, 100, 255)
+                    highlight.OutlineColor = Color3.fromRGB(50, 150, 255)
+                else
+                    highlight.FillColor = Color3.fromRGB(0, 255, 100)
+                    highlight.OutlineColor = Color3.fromRGB(100, 255, 150)
+                end
+                highlight.FillTransparency = 0.4
+            else
+                if highlight then highlight:Destroy() end
+            end
+        end
+    end
+end
+
+-- COMBAT & LOGIC LOOP
 local bodyVel, bodyGyro
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
@@ -449,6 +510,7 @@ RunService.RenderStepped:Connect(function()
         local hrp = char.HumanoidRootPart
         local hum = char.Humanoid
         
+        -- Fly Handling
         if _G.G_LIGHT_SETTINGS.FlyEnabled then
             if not bodyVel then
                 bodyVel = Instance.new("BodyVelocity")
@@ -480,10 +542,51 @@ RunService.RenderStepped:Connect(function()
             if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
         end
         
+        -- Custom Speed
         if _G.G_LIGHT_SETTINGS.CustomSpeedEnabled then
             hum.WalkSpeed = _G.G_LIGHT_SETTINGS.SpeedValue
         end
+
+        -- Kill Aura (MM2 & General Melee)
+        if _G.G_LIGHT_SETTINGS.KillAura then
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool then
+                for _, target in pairs(Players:GetPlayers()) do
+                    if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetHrp = target.Character.HumanoidRootPart
+                        local dist = (hrp.Position - targetHrp.Position).Magnitude
+                        if dist <= 15 then
+                            tool:Activate()
+                            if tool:FindFirstChild("Handle") then
+                                firetouchinterest(tool.Handle, targetHrp, 0)
+                                firetouchinterest(tool.Handle, targetHrp, 1)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Danger Radar
+        if _G.G_LIGHT_SETTINGS.DangerRadar then
+            local murdererFound = false
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and getMM2Role(player) == "Murderer" and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                    if dist <= 40 then
+                        murdererFound = true
+                        break
+                    end
+                end
+            end
+            RadarWarning.Visible = murdererFound
+        else
+            RadarWarning.Visible = false
+        end
     end
+    
+    -- Update ESP Loop
+    updateESP()
 end)
 
 -- Inf Jump Logic
