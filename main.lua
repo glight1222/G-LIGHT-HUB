@@ -12,6 +12,8 @@ local LocalPlayer = Players.LocalPlayer
 -- Global Settings
 _G.G_LIGHT_SETTINGS = _G.G_LIGHT_SETTINGS or {
     ESP_Roles = false,
+    AutoCoinFarm = false,
+    CoinFarmSpeed = 25,
     CustomSpeedEnabled = false,
     SpeedValue = 16,
     InfJump = false,
@@ -164,7 +166,7 @@ task.spawn(function()
     }
 
     while starSpawning do
-        task.wait(0.02) -- В 2.5 раза больше звёзд
+        task.wait(0.02)
         local star = Instance.new("Frame")
         local width = math.random(40, 120)
         star.Size = UDim2.new(0, width, 0, 2)
@@ -259,12 +261,10 @@ end)
 
 -- Intro Sequences Timeline with Sound & Visual Tweaks
 task.spawn(function()
-    -- Phase 1: "G_light present..." (5 sec)
     TweenService:Create(IntroText, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
     TweenService:Create(TextGlow, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0.6}):Play()
     task.wait(5)
 
-    -- Phase 2: "A new best hub for mm2" (5 sec)
     TweenService:Create(IntroText, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
     TweenService:Create(TextGlow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
     task.wait(0.4)
@@ -278,12 +278,10 @@ task.spawn(function()
     TweenService:Create(TextGlow, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0.5}):Play()
     task.wait(5)
 
-    -- Phase 3: "G_LIGHT HUB!!!" (1 sec) + Shockwave Pulse Effect
     TweenService:Create(IntroText, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
     TweenService:Create(TextGlow, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
     task.wait(0.3)
 
-    -- Mild Flash Burst
     TweenService:Create(FlashOverlay, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.75}):Play()
     task.delay(0.15, function()
         TweenService:Create(FlashOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
@@ -300,7 +298,6 @@ task.spawn(function()
     TweenService:Create(TextGlow, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextTransparency = 0.3}):Play()
     task.wait(1)
 
-    -- Phase 4: Final Scale Zoom & Smooth Fade-Out
     pulsing = false
     starSpawning = false
     bgStarsActive = false
@@ -686,6 +683,10 @@ end
 -- POPULATE PAGES
 ---------------------------------------------------------
 createToggle(Pages["MM2"], "Role & Coin ESP", "ESP_Roles")
+createToggle(Pages["MM2"], "Auto Money Farm (Fly Bypass)", "AutoCoinFarm")
+createSlider(Pages["MM2"], "Coin Farm Speed", 10, 50, 25, function(v)
+    _G.G_LIGHT_SETTINGS.CoinFarmSpeed = v
+end)
 
 createToggle(Pages["Movement"], "Custom WalkSpeed", "CustomSpeedEnabled", function(v)
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -767,6 +768,76 @@ for themeName, _ in pairs(Themes) do
         applyTheme(themeName)
     end)
 end
+
+---------------------------------------------------------
+-- AUTO MONEY FARM LOGIC (FLY BYPASS + NOCLIP)
+---------------------------------------------------------
+local function getClosestCoin()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local hrp = char.HumanoidRootPart
+
+    local closestCoin = nil
+    local shortestDistance = math.huge
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        local name = obj.Name:lower()
+        if (name == "coin" or name == "coincontainer" or name == "goldcoin" or obj:FindFirstChild("CoinID")) and not obj:IsDescendantOf(char) then
+            local coinPart = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
+            if coinPart and (obj:FindFirstChild("TouchInterest") or coinPart:FindFirstChild("TouchInterest")) then
+                local dist = (hrp.Position - coinPart.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closestCoin = coinPart
+                end
+            end
+        end
+    end
+
+    return closestCoin
+end
+
+-- Noclip loop for Farm & Noclip Mode
+RunService.Stepped:Connect(function()
+    if _G.G_LIGHT_SETTINGS.AutoCoinFarm or _G.G_LIGHT_SETTINGS.NoclipEnabled then
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- Fly Farm Loop
+RunService.Heartbeat:Connect(function(deltaTime)
+    if not _G.G_LIGHT_SETTINGS.AutoCoinFarm then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return end
+
+    humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+
+    local targetCoin = getClosestCoin()
+    if targetCoin then
+        local targetPos = targetCoin.Position
+        local direction = (targetPos - hrp.Position).Unit
+        local distance = (targetPos - hrp.Position).Magnitude
+
+        if distance > 1.5 then
+            local speed = _G.G_LIGHT_SETTINGS.CoinFarmSpeed or 25
+            hrp.CFrame = hrp.CFrame + (direction * math.min(distance, speed * deltaTime * 8))
+            hrp.Velocity = Vector3.new(0, 0, 0)
+        else
+            hrp.CFrame = CFrame.new(targetPos)
+        end
+    end
+end)
 
 ---------------------------------------------------------
 -- MM2 ESP SYSTEM
@@ -885,119 +956,6 @@ task.spawn(function()
             for _, desc in pairs(Workspace:GetDescendants()) do
                 clearCoinESP(desc)
             end
-        end
-    end
-end)
-
----------------------------------------------------------
--- RUNTIME LOOPS & SAFE MOVEMENT
----------------------------------------------------------
-RunService.Stepped:Connect(function()
-    if _G.G_LIGHT_SETTINGS.NoclipEnabled and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
-            end
-        end
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-        local hrp = char.HumanoidRootPart
-        local hum = char.Humanoid
-        
-        -- Bypass Fly Mode
-        if _G.G_LIGHT_SETTINGS.FlyEnabled then
-            hum.PlatformStand = true
-            local cam = Workspace.CurrentCamera
-            local moveDir = Vector3.new()
-            
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-            
-            local jitter = Vector3.new(math.random(-1, 1)/100, 0, math.random(-1, 1)/100)
-            hrp.CFrame = hrp.CFrame + (moveDir * (_G.G_LIGHT_SETTINGS.FlySpeed * 0.7)) + jitter
-            hrp.Velocity = Vector3.new(0, 0, 0)
-        else
-            if hum.PlatformStand then hum.PlatformStand = false end
-        end
-        
-        -- Custom Speed
-        if _G.G_LIGHT_SETTINGS.CustomSpeedEnabled then
-            hum.WalkSpeed = _G.G_LIGHT_SETTINGS.SpeedValue
-        end
-
-        -- Kill Aura
-        if _G.G_LIGHT_SETTINGS.KillAura then
-            local tool = char:FindFirstChildOfClass("Tool")
-            if tool then
-                for _, target in pairs(Players:GetPlayers()) do
-                    if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                        local targetHrp = target.Character.HumanoidRootPart
-                        if (hrp.Position - targetHrp.Position).Magnitude <= 12 then
-                            pcall(function()
-                                tool:Activate()
-                                local handle = tool:FindFirstChild("Handle")
-                                if firetouchinterest and handle then
-                                    firetouchinterest(handle, targetHrp, 0)
-                                    firetouchinterest(handle, targetHrp, 1)
-                                end
-                            end)
-                        end
-                    end
-                end
-            end
-        end
-
-        -- Danger Radar
-        if _G.G_LIGHT_SETTINGS.DangerRadar then
-            local murdererFound = false
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and getMM2Role(player) == "Murderer" and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    if (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude <= 40 then
-                        murdererFound = true
-                        break
-                    end
-                end
-            end
-            RadarWarning.Visible = murdererFound
-        else
-            RadarWarning.Visible = false
-        end
-    end
-end)
-
--- Safe Infinite Jump
-local lastJump = 0
-UserInputService.JumpRequest:Connect(function()
-    if _G.G_LIGHT_SETTINGS.InfJump then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            if tick() - lastJump > 0.18 then
-                lastJump = tick()
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-            end
-        end
-    end
-end)
-
--- Key Binds (RightControl to Hide/Show UI, Q to Dash)
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        MainFrame.Visible = not MainFrame.Visible
-    elseif input.KeyCode == Enum.KeyCode.Q and _G.G_LIGHT_SETTINGS.DashEnabled then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * 15)
         end
     end
 end)
