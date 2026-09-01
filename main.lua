@@ -15,6 +15,7 @@ _G.G_LIGHT_SETTINGS = _G.G_LIGHT_SETTINGS or {
     SpeedValue = 16,
     InfJump = false,
     DashEnabled = false,
+    NoclipEnabled = false,
     KillAura = false,
     DangerRadar = false,
     CurrentTheme = "Cosmic",
@@ -122,7 +123,7 @@ end)
 local IntroText = Instance.new("TextLabel")
 IntroText.Size = UDim2.new(1, 0, 1, 0)
 IntroText.BackgroundTransparency = 1
-IntroText.Text = "✨ G LIGHT HUB v5.6 ✨"
+IntroText.Text = "✨ G LIGHT HUB v5.7 ✨"
 IntroText.TextColor3 = Color3.fromRGB(0, 190, 255)
 IntroText.TextSize = 30
 IntroText.Font = Enum.Font.GothamBold
@@ -222,7 +223,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 1, 0)
 Title.Position = UDim2.new(0, 16, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "✨ G LIGHT HUB  <font color='#8C00FF'>v5.6</font> ✨"
+Title.Text = "✨ G LIGHT HUB  <font color='#8C00FF'>v5.7</font> ✨"
 Title.RichText = true
 Title.TextColor3 = Themes.Cosmic.Text
 Title.TextSize = 17
@@ -532,9 +533,10 @@ createSlider(Pages["Movement"], "Speed Value", 16, 120, 16, function(v)
 end)
 createToggle(Pages["Movement"], "Infinite Jump", "InfJump")
 createToggle(Pages["Movement"], "Dash (Press Q)", "DashEnabled")
+createToggle(Pages["Movement"], "Noclip (Walk Through Walls)", "NoclipEnabled")
 
--- FLY MODE WITH SPEED SLIDER
-createToggle(Pages["Movement"], "Fly Mode", "FlyEnabled")
+-- FLY MODE WITH RISK WARNING & SPEED SLIDER (ENGLISH)
+createToggle(Pages["Movement"], "Fly Mode ⚠️ (Kick Risk)", "FlyEnabled")
 createSlider(Pages["Movement"], "Fly Speed Multiplier", 1, 10, 1, function(v)
     _G.G_LIGHT_SETTINGS.FlySpeed = v
 end)
@@ -603,7 +605,7 @@ for themeName, _ in pairs(Themes) do
 end
 
 ---------------------------------------------------------
--- FIXED MM2 ESP & RADAR LOGIC
+-- MM2 ESP & RADAR LOGIC (CHECK CHARACTER & BACKPACK)
 ---------------------------------------------------------
 local RadarWarning = Instance.new("TextLabel")
 RadarWarning.Name = "DangerRadarWarning"
@@ -622,7 +624,6 @@ local RadarCorner = Instance.new("UICorner")
 RadarCorner.CornerRadius = UDim.new(0, 8)
 RadarCorner.Parent = RadarWarning
 
--- Усовершенствованная функция определения роли MM2
 local function getMM2Role(player)
     if not player or not player.Character then return "Innocent" end
     local char = player.Character
@@ -692,6 +693,17 @@ end
 
 -- RUNTIME LOOPS
 local bodyVel, bodyGyro
+RunService.Stepped:Connect(function()
+    -- NOCLIP LOGIC
+    if _G.G_LIGHT_SETTINGS.NoclipEnabled and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
@@ -734,19 +746,22 @@ RunService.RenderStepped:Connect(function()
             hum.WalkSpeed = _G.G_LIGHT_SETTINGS.SpeedValue
         end
 
-        -- Kill Aura
+        -- SAFE KILL AURA LOGIC (NO CRASH / REJOIN)
         if _G.G_LIGHT_SETTINGS.KillAura then
             local tool = char:FindFirstChildOfClass("Tool")
             if tool then
                 for _, target in pairs(Players:GetPlayers()) do
                     if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                         local targetHrp = target.Character.HumanoidRootPart
-                        if (hrp.Position - targetHrp.Position).Magnitude <= 15 then
-                            tool:Activate()
-                            if firetouchinterest and tool:FindFirstChild("Handle") then
-                                firetouchinterest(tool.Handle, targetHrp, 0)
-                                firetouchinterest(tool.Handle, targetHrp, 1)
-                            end
+                        if (hrp.Position - targetHrp.Position).Magnitude <= 12 then
+                            pcall(function()
+                                tool:Activate()
+                                local handle = tool:FindFirstChild("Handle")
+                                if firetouchinterest and handle then
+                                    firetouchinterest(handle, targetHrp, 0)
+                                    firetouchinterest(handle, targetHrp, 1)
+                                end
+                            end)
                         end
                     end
                 end
